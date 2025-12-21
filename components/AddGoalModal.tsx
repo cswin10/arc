@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,12 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
 import { formatDate, getWeekStart, getMonthStart, getToday } from '../lib/utils';
+import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
+import type { YearlyGoalCategory } from '../types/database';
 
 type GoalType = 'weekly' | 'monthly' | 'yearly';
 
@@ -29,9 +32,10 @@ interface AddGoalModalProps {
     week_start?: string;
     month?: string;
     year?: number;
+    category?: YearlyGoalCategory;
   }) => void;
   type: GoalType;
-  period?: string | number; // week_start, month, or year
+  period?: string | number;
 }
 
 export const AddGoalModal: React.FC<AddGoalModalProps> = ({
@@ -41,7 +45,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   type,
   period,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { allYearlyGoals } = useYearlyGoals();
 
   const [name, setName] = useState('');
@@ -49,9 +53,21 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const [isRecurring, setIsRecurring] = useState(false);
   const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<YearlyGoalCategory>('other');
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  // Group yearly goals by category
+  const goalsByCategory = useMemo(() => {
+    return YEARLY_GOAL_CATEGORIES.reduce((acc, category) => {
+      const goals = allYearlyGoals.filter((g) => (g.category || 'other') === category.id);
+      if (goals.length > 0) {
+        acc[category.id] = goals;
+      }
+      return acc;
+    }, {} as Record<YearlyGoalCategory, typeof allYearlyGoals>);
+  }, [allYearlyGoals]);
+
+  const handleSubmit = async () => {
     if (!name.trim()) {
       setError('Please enter a goal name');
       return;
@@ -61,6 +77,8 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
       setError('Please enter a valid target');
       return;
     }
+
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const baseGoal = {
       name: name.trim(),
@@ -83,6 +101,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
       onSubmit({
         ...baseGoal,
         year: (period as number) || getToday().getFullYear(),
+        category: selectedCategory,
       });
     }
 
@@ -91,6 +110,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     setTarget('1');
     setIsRecurring(false);
     setLinkedGoalId(null);
+    setSelectedCategory('other');
     setError('');
     onClose();
   };
@@ -128,9 +148,9 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.backgroundSecondary,
+                    backgroundColor: colors.cardBackground,
                     color: colors.text,
-                    borderColor: colors.border,
+                    borderColor: colors.cardBorder,
                   },
                 ]}
                 placeholder={`e.g., ${type === 'yearly' ? 'Read 24 books' : 'Complete project milestone'}`}
@@ -147,9 +167,9 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.backgroundSecondary,
+                    backgroundColor: colors.cardBackground,
                     color: colors.text,
-                    borderColor: colors.border,
+                    borderColor: colors.cardBorder,
                   },
                 ]}
                 placeholder="e.g., 10"
@@ -159,6 +179,43 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 keyboardType="number-pad"
               />
             </View>
+
+            {/* Category picker for yearly goals */}
+            {type === 'yearly' && (
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                  {YEARLY_GOAL_CATEGORIES.map((category) => {
+                    const isSelected = selectedCategory === category.id;
+                    return (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: isSelected
+                              ? category.color + '20'
+                              : colors.cardBackground,
+                            borderColor: isSelected ? category.color : colors.cardBorder,
+                          },
+                        ]}
+                        onPress={() => setSelectedCategory(category.id)}
+                      >
+                        <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.categoryLabel,
+                            { color: isSelected ? category.color : colors.text },
+                          ]}
+                        >
+                          {category.label.split(' ')[0]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {type !== 'yearly' && (
               <>
@@ -185,23 +242,37 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                     style={[
                       styles.pickerButton,
                       {
-                        backgroundColor: colors.backgroundSecondary,
-                        borderColor: colors.border,
+                        backgroundColor: colors.cardBackground,
+                        borderColor: colors.cardBorder,
                       },
                     ]}
                     onPress={() => setShowGoalPicker(!showGoalPicker)}
                   >
-                    <Text style={{ color: selectedGoal ? colors.text : colors.textTertiary }}>
-                      {selectedGoal?.name || 'Select a yearly goal'}
-                    </Text>
+                    <View style={styles.pickerContent}>
+                      {selectedGoal ? (
+                        <>
+                          <Text style={styles.pickerEmoji}>
+                            {getCategoryConfig(selectedGoal.category || 'other').emoji}
+                          </Text>
+                          <Text style={[styles.pickerText, { color: colors.text }]} numberOfLines={1}>
+                            {selectedGoal.name}
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={[styles.pickerText, { color: colors.textTertiary }]}>
+                          Select a yearly goal
+                        </Text>
+                      )}
+                    </View>
                     <Ionicons
                       name={showGoalPicker ? 'chevron-up' : 'chevron-down'}
                       size={20}
                       color={colors.textTertiary}
                     />
                   </TouchableOpacity>
+
                   {showGoalPicker && (
-                    <View style={[styles.goalPicker, { backgroundColor: colors.backgroundSecondary }]}>
+                    <View style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                       <TouchableOpacity
                         style={[styles.goalOption, { borderBottomColor: colors.border }]}
                         onPress={() => {
@@ -211,26 +282,52 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                       >
                         <Text style={{ color: colors.textSecondary }}>None</Text>
                       </TouchableOpacity>
-                      {allYearlyGoals.map((goal) => (
-                        <TouchableOpacity
-                          key={goal.id}
-                          style={[styles.goalOption, { borderBottomColor: colors.border }]}
-                          onPress={() => {
-                            setLinkedGoalId(goal.id);
-                            setShowGoalPicker(false);
-                          }}
-                        >
-                          <Text style={{ color: colors.text }}>{goal.name}</Text>
-                          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                            {goal.current}/{goal.target} ({goal.year})
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+
+                      {/* Goals organized by category */}
+                      {YEARLY_GOAL_CATEGORIES.map((category) => {
+                        const goals = goalsByCategory[category.id];
+                        if (!goals || goals.length === 0) return null;
+
+                        return (
+                          <View key={category.id}>
+                            <View style={[styles.categoryHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                              <Text style={styles.categoryHeaderEmoji}>{category.emoji}</Text>
+                              <Text style={[styles.categoryHeaderText, { color: colors.textSecondary }]}>
+                                {category.label}
+                              </Text>
+                            </View>
+                            {goals.map((goal) => (
+                              <TouchableOpacity
+                                key={goal.id}
+                                style={[
+                                  styles.goalOption,
+                                  { borderBottomColor: colors.border },
+                                  linkedGoalId === goal.id && { backgroundColor: colors.primaryLight + '20' },
+                                ]}
+                                onPress={() => {
+                                  Haptics.selectionAsync();
+                                  setLinkedGoalId(goal.id);
+                                  setShowGoalPicker(false);
+                                }}
+                              >
+                                <Text style={[styles.goalName, { color: colors.text }]} numberOfLines={1}>
+                                  {goal.name}
+                                </Text>
+                                <Text style={[styles.goalProgress, { color: colors.textSecondary }]}>
+                                  {goal.current}/{goal.target}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        );
+                      })}
                     </View>
                   )}
                 </View>
               </>
             )}
+
+            <View style={styles.bottomPadding} />
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -257,7 +354,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   cancelButton: {
     fontSize: 16,
@@ -274,7 +371,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 8,
   },
   sublabel: {
@@ -282,11 +379,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   input: {
-    height: 48,
-    borderRadius: 8,
+    height: 50,
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
+  },
+  categoryScroll: {
+    marginHorizontal: -4,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  categoryEmoji: {
+    fontSize: 16,
+  },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   switchRow: {
     flexDirection: 'row',
@@ -295,29 +412,74 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   pickerButton: {
-    height: 48,
-    borderRadius: 8,
+    height: 50,
+    borderRadius: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
   },
+  pickerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickerEmoji: {
+    fontSize: 16,
+  },
+  pickerText: {
+    fontSize: 15,
+    flex: 1,
+  },
   goalPicker: {
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    maxHeight: 300,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  categoryHeaderEmoji: {
+    fontSize: 14,
+  },
+  categoryHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   goalOption: {
-    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
     borderBottomWidth: 1,
+  },
+  goalName: {
+    fontSize: 14,
+    flex: 1,
+    marginRight: 8,
+  },
+  goalProgress: {
+    fontSize: 12,
   },
   errorContainer: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   errorText: {
     fontSize: 14,
+  },
+  bottomPadding: {
+    height: 40,
   },
 });
