@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,12 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
 import { formatDate, getToday, getWeekStart } from '../lib/utils';
-import type { HabitType, YearlyGoal } from '../types/database';
+import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
+import type { HabitType, YearlyGoal, YearlyGoalCategory } from '../types/database';
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -35,13 +37,14 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   visible,
   onClose,
   onSubmit,
-  type: defaultType = 'daily',
+  type: fixedType,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { allYearlyGoals } = useYearlyGoals();
 
   const [name, setName] = useState('');
-  const [type, setType] = useState<HabitType>(defaultType);
+  // Use fixedType if provided, otherwise default to 'daily'
+  const [type, setType] = useState<HabitType>(fixedType || 'daily');
   const [startDate, setStartDate] = useState(formatDate(getToday()));
   const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(true);
@@ -49,29 +52,45 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  // Group yearly goals by category
+  const goalsByCategory = useMemo(() => {
+    return YEARLY_GOAL_CATEGORIES.reduce((acc, category) => {
+      const goals = allYearlyGoals.filter((g) => (g.category || 'other') === category.id);
+      if (goals.length > 0) {
+        acc[category.id] = goals;
+      }
+      return acc;
+    }, {} as Record<YearlyGoalCategory, typeof allYearlyGoals>);
+  }, [allYearlyGoals]);
+
+  // Use the effective type (fixed or selected)
+  const effectiveType = fixedType || type;
+
+  const handleSubmit = async () => {
     if (!name.trim()) {
       setError('Please enter a habit name');
       return;
     }
 
-    if (type === 'weekly' && (!weeklyTarget || parseInt(weeklyTarget) < 1)) {
+    if (effectiveType === 'weekly' && (!weeklyTarget || parseInt(weeklyTarget) < 1)) {
       setError('Please enter a valid weekly target');
       return;
     }
 
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     onSubmit({
       name: name.trim(),
-      type,
+      type: effectiveType,
       start_date: startDate,
       linked_yearly_goal_id: linkedGoalId,
-      is_recurring: type === 'weekly' ? isRecurring : undefined,
-      weekly_target: type === 'weekly' ? parseInt(weeklyTarget) : undefined,
+      is_recurring: effectiveType === 'weekly' ? isRecurring : undefined,
+      weekly_target: effectiveType === 'weekly' ? parseInt(weeklyTarget) : undefined,
     });
 
     // Reset form
     setName('');
-    setType(defaultType);
+    setType(fixedType || 'daily');
     setStartDate(formatDate(getToday()));
     setLinkedGoalId(null);
     setIsRecurring(true);
@@ -81,6 +100,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   };
 
   const selectedGoal = allYearlyGoals.find((g) => g.id === linkedGoalId);
+  const typeLabel = effectiveType === 'weekly' ? 'Weekly' : 'Daily';
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -93,7 +113,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
             <TouchableOpacity onPress={onClose}>
               <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.text }]}>New Habit</Text>
+            <Text style={[styles.title, { color: colors.text }]}>New {typeLabel} Habit</Text>
             <TouchableOpacity onPress={handleSubmit}>
               <Text style={[styles.saveButton, { color: colors.primary }]}>Save</Text>
             </TouchableOpacity>
@@ -125,50 +145,53 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Type</Text>
-              <View style={styles.typeContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    {
-                      backgroundColor:
-                        type === 'daily' ? colors.primary : colors.backgroundSecondary,
-                      borderColor: type === 'daily' ? colors.primary : colors.border,
-                    },
-                  ]}
-                  onPress={() => setType('daily')}
-                >
-                  <Text
-                    style={[styles.typeButtonText, { color: type === 'daily' ? '#fff' : colors.text }]}
+            {/* Only show type toggle if no fixed type is provided */}
+            {!fixedType && (
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.text }]}>Type</Text>
+                <View style={styles.typeContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeButton,
+                      {
+                        backgroundColor:
+                          type === 'daily' ? colors.primary : colors.backgroundSecondary,
+                        borderColor: type === 'daily' ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setType('daily')}
                   >
-                    Daily
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.typeButton,
-                    {
-                      backgroundColor:
-                        type === 'weekly' ? colors.primary : colors.backgroundSecondary,
-                      borderColor: type === 'weekly' ? colors.primary : colors.border,
-                    },
-                  ]}
-                  onPress={() => setType('weekly')}
-                >
-                  <Text
-                    style={[styles.typeButtonText, { color: type === 'weekly' ? '#fff' : colors.text }]}
+                    <Text
+                      style={[styles.typeButtonText, { color: type === 'daily' ? '#fff' : colors.text }]}
+                    >
+                      Daily
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeButton,
+                      {
+                        backgroundColor:
+                          type === 'weekly' ? colors.primary : colors.backgroundSecondary,
+                        borderColor: type === 'weekly' ? colors.primary : colors.border,
+                      },
+                    ]}
+                    onPress={() => setType('weekly')}
                   >
-                    Weekly
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[styles.typeButtonText, { color: type === 'weekly' ? '#fff' : colors.text }]}
+                    >
+                      Weekly
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            )}
 
-            {type === 'weekly' && (
+            {effectiveType === 'weekly' && (
               <>
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { color: colors.text }]}>Weekly Target</Text>
+                  <Text style={[styles.label, { color: colors.text }]}>Minimum Weekly Target</Text>
                   <TextInput
                     style={[
                       styles.input,
@@ -184,6 +207,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                     onChangeText={setWeeklyTarget}
                     keyboardType="number-pad"
                   />
+                  <Text style={[styles.sublabel, { color: colors.textSecondary, marginTop: 4 }]}>
+                    You can always log more than your target
+                  </Text>
                 </View>
 
                 <View style={styles.switchRow}>
@@ -233,9 +259,22 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 ]}
                 onPress={() => setShowGoalPicker(!showGoalPicker)}
               >
-                <Text style={{ color: selectedGoal ? colors.text : colors.textTertiary }}>
-                  {selectedGoal?.name || 'Select a yearly goal'}
-                </Text>
+                <View style={styles.pickerContent}>
+                  {selectedGoal ? (
+                    <>
+                      <Text style={styles.pickerEmoji}>
+                        {getCategoryConfig(selectedGoal.category || 'other').emoji}
+                      </Text>
+                      <Text style={[styles.pickerText, { color: colors.text }]} numberOfLines={1}>
+                        {selectedGoal.name}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={[styles.pickerText, { color: colors.textTertiary }]}>
+                      Select a yearly goal
+                    </Text>
+                  )}
+                </View>
                 <Ionicons
                   name={showGoalPicker ? 'chevron-up' : 'chevron-down'}
                   size={20}
@@ -243,7 +282,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 />
               </TouchableOpacity>
               {showGoalPicker && (
-                <View style={[styles.goalPicker, { backgroundColor: colors.backgroundSecondary }]}>
+                <ScrollView style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
                   <TouchableOpacity
                     style={[styles.goalOption, { borderBottomColor: colors.border }]}
                     onPress={() => {
@@ -253,22 +292,46 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                   >
                     <Text style={{ color: colors.textSecondary }}>None</Text>
                   </TouchableOpacity>
-                  {allYearlyGoals.map((goal) => (
-                    <TouchableOpacity
-                      key={goal.id}
-                      style={[styles.goalOption, { borderBottomColor: colors.border }]}
-                      onPress={() => {
-                        setLinkedGoalId(goal.id);
-                        setShowGoalPicker(false);
-                      }}
-                    >
-                      <Text style={{ color: colors.text }}>{goal.name}</Text>
-                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                        {goal.current}/{goal.target} ({goal.year})
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+
+                  {/* Goals organized by category */}
+                  {YEARLY_GOAL_CATEGORIES.map((category) => {
+                    const goals = goalsByCategory[category.id];
+                    if (!goals || goals.length === 0) return null;
+
+                    return (
+                      <View key={category.id}>
+                        <View style={[styles.categoryHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                          <Text style={styles.categoryHeaderEmoji}>{category.emoji}</Text>
+                          <Text style={[styles.categoryHeaderText, { color: colors.textSecondary }]}>
+                            {category.label}
+                          </Text>
+                        </View>
+                        {goals.map((goal) => (
+                          <TouchableOpacity
+                            key={goal.id}
+                            style={[
+                              styles.goalOption,
+                              { borderBottomColor: colors.border },
+                              linkedGoalId === goal.id && { backgroundColor: colors.primaryLight + '20' },
+                            ]}
+                            onPress={() => {
+                              Haptics.selectionAsync();
+                              setLinkedGoalId(goal.id);
+                              setShowGoalPicker(false);
+                            }}
+                          >
+                            <Text style={[styles.goalName, { color: colors.text }]} numberOfLines={1}>
+                              {goal.name}
+                            </Text>
+                            <Text style={[styles.goalProgress, { color: colors.textSecondary }]}>
+                              {goal.current}/{goal.target}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </ScrollView>
               )}
             </View>
           </ScrollView>
@@ -351,22 +414,64 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   pickerButton: {
-    height: 48,
-    borderRadius: 8,
+    height: 50,
+    borderRadius: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
   },
+  pickerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickerEmoji: {
+    fontSize: 16,
+  },
+  pickerText: {
+    fontSize: 15,
+    flex: 1,
+  },
   goalPicker: {
     marginTop: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    maxHeight: 300,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  categoryHeaderEmoji: {
+    fontSize: 14,
+  },
+  categoryHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   goalOption: {
-    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
     borderBottomWidth: 1,
+  },
+  goalName: {
+    fontSize: 14,
+    flex: 1,
+    marginRight: 8,
+  },
+  goalProgress: {
+    fontSize: 12,
   },
   errorContainer: {
     padding: 12,
