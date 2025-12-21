@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import { ProgressBar } from './ProgressBar';
@@ -13,6 +13,7 @@ interface GoalCardProps {
   isRecurring?: boolean;
   showProgress?: boolean;
   linkedGoalName?: string;
+  accentColor?: string;
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({
@@ -24,12 +25,13 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   isRecurring = false,
   showProgress = true,
   linkedGoalName,
+  accentColor,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const progress = target > 0 ? current / target : 0;
   const isComplete = current >= target;
-  const progressColor = isComplete ? colors.success : colors.primary;
+  const progressColor = isComplete ? colors.success : (accentColor || colors.primary);
 
   return (
     <TouchableOpacity
@@ -37,7 +39,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         styles.container,
         {
           backgroundColor: colors.cardBackground,
-          borderColor: colors.border,
+          borderColor: accentColor ? accentColor + '30' : colors.cardBorder,
         },
       ]}
       onPress={onPress}
@@ -45,13 +47,25 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={2}>
+          {isComplete && (
+            <View style={[styles.completeBadge, { backgroundColor: colors.success + '20' }]}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+            </View>
+          )}
+          <Text
+            style={[
+              styles.name,
+              { color: colors.text },
+              isComplete && styles.completedName,
+            ]}
+            numberOfLines={2}
+          >
             {name}
           </Text>
           {isRecurring && (
             <Ionicons
               name="repeat"
-              size={16}
+              size={14}
               color={colors.textTertiary}
               style={styles.recurringIcon}
             />
@@ -79,15 +93,23 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         </View>
       )}
 
-      {onIncrement && (
+      {onIncrement && !isComplete && (
         <TouchableOpacity
-          style={[styles.incrementButton, { backgroundColor: colors.primaryLight }]}
+          style={[
+            styles.incrementButton,
+            {
+              backgroundColor: isDark
+                ? (accentColor || colors.primary) + '25'
+                : (accentColor || colors.primary) + '15',
+              borderColor: (accentColor || colors.primary) + '50',
+            },
+          ]}
           onPress={(e) => {
             e.stopPropagation();
             onIncrement();
           }}
         >
-          <Ionicons name="add" size={20} color={colors.primary} />
+          <Ionicons name="add" size={18} color={accentColor || colors.primary} />
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -96,12 +118,23 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
     marginHorizontal: 16,
-    marginVertical: 4,
+    marginVertical: 5,
     position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E040FB',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -113,14 +146,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 8,
+    gap: 8,
+  },
+  completeBadge: {
+    padding: 2,
+    borderRadius: 10,
   },
   name: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     flex: 1,
+    lineHeight: 20,
+  },
+  completedName: {
+    opacity: 0.7,
   },
   recurringIcon: {
-    marginLeft: 8,
+    marginLeft: 4,
   },
   progressText: {
     flexDirection: 'row',
@@ -128,7 +170,7 @@ const styles = StyleSheet.create({
   },
   current: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   divider: {
     fontSize: 14,
@@ -136,9 +178,10 @@ const styles = StyleSheet.create({
   },
   target: {
     fontSize: 14,
+    fontWeight: '500',
   },
   progressContainer: {
-    marginTop: 12,
+    marginTop: 10,
   },
   linkedContainer: {
     flexDirection: 'row',
@@ -154,9 +197,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     bottom: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
