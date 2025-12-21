@@ -93,6 +93,15 @@ export interface MonthlyGoal {
   created_at: string;
 }
 
+export type YearlyGoalCategory =
+  | 'business'
+  | 'brand'
+  | 'health'
+  | 'personal'
+  | 'travel'
+  | 'lifestyle'
+  | 'other';
+
 export interface YearlyGoal {
   id: string;
   user_id: string;
@@ -100,6 +109,7 @@ export interface YearlyGoal {
   year: number;
   target: number;
   current: number;
+  category: YearlyGoalCategory;
   is_archived: boolean;
   created_at: string;
 }

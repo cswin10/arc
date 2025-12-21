@@ -15,6 +15,7 @@ import { Link, router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { isValidEmail } from '../../lib/utils';
+import { Logo } from '../../components/Logo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -66,9 +67,9 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={[styles.logo, { color: colors.primary }]}>Arc</Text>
+          <Logo size="large" />
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Track your habits and achieve your goals
+            Track your habits{'\n'}achieve your goals
           </Text>
         </View>
 
@@ -169,14 +170,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
-  logo: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
+    lineHeight: 24,
+    marginTop: 16,
   },
   form: {
     width: '100%',
