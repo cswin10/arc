@@ -28,29 +28,7 @@ export const signUp = async ({ email, password }: SignUpData): Promise<AuthResul
       return { success: false, error: error.message };
     }
 
-    if (data.user) {
-      // Create user profile in users table
-      const defaultSettings: UserSettings = {
-        dark_mode: false,
-        notification_preferences: {
-          daily_reminder: true,
-          daily_reminder_time: '09:00',
-          weekly_planning_reminder: true,
-          monthly_planning_reminder: true,
-        },
-      };
-
-      const { error: profileError } = await supabase.from('users').insert({
-        id: data.user.id,
-        email: data.user.email || email,
-        settings: defaultSettings,
-      });
-
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        // Don't fail the signup if profile creation fails
-      }
-    }
+    // User profile is created automatically by database trigger
 
     return { success: true };
   } catch (err) {
