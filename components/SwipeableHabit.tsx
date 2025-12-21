@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import type { HabitWithStats } from '../types/database';
@@ -17,7 +17,7 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   onSwipeLeft,
   onPress,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const isCompleted = habit.todayLog?.completed === true;
   const isNotCompleted = habit.todayLog?.completed === false;
@@ -29,21 +29,35 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
         style={[
           styles.habitCard,
           {
-            backgroundColor: hasLog ? colors.backgroundSecondary : colors.cardBackground,
-            borderColor: colors.border,
-            opacity: hasLog ? 0.7 : 1,
+            backgroundColor: hasLog
+              ? (isDark ? 'rgba(26, 26, 46, 0.6)' : 'rgba(255, 255, 255, 0.5)')
+              : colors.cardBackground,
+            borderColor: isCompleted
+              ? colors.success
+              : isNotCompleted
+                ? colors.error
+                : colors.cardBorder,
+            borderWidth: isCompleted || isNotCompleted ? 1.5 : 1,
           },
         ]}
         onPress={() => onPress?.(habit.id)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <View style={styles.habitContent}>
-          {/* Done button */}
+          {/* Done button with glow */}
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.success }]}
+            style={[
+              styles.actionButton,
+              styles.successButton,
+              {
+                backgroundColor: colors.success,
+                opacity: isCompleted ? 0.5 : 1,
+              },
+            ]}
             onPress={() => onSwipeRight(habit.id)}
+            disabled={isCompleted}
           >
-            <Ionicons name="checkmark" size={20} color="#fff" />
+            <Ionicons name="checkmark" size={18} color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.habitInfo}>
@@ -51,19 +65,23 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
               style={[
                 styles.habitName,
                 { color: colors.text },
+                hasLog && styles.dimmedText,
                 isNotCompleted && styles.strikethrough,
               ]}
               numberOfLines={1}
             >
               {habit.name}
             </Text>
+
             {isCompleted && (
               <View style={[styles.statusBadge, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="checkmark-circle" size={12} color={colors.success} />
                 <Text style={[styles.statusText, { color: colors.success }]}>Done</Text>
               </View>
             )}
             {isNotCompleted && (
               <View style={[styles.statusBadge, { backgroundColor: colors.errorLight }]}>
+                <Ionicons name="close-circle" size={12} color={colors.error} />
                 <Text style={[styles.statusText, { color: colors.error }]}>Skipped</Text>
               </View>
             )}
@@ -71,16 +89,29 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
 
           <View style={styles.rightSection}>
             {habit.currentStreak > 0 && (
-              <Text style={[styles.streakText, { color: colors.streak }]}>
-                🔥 {habit.currentStreak}
-              </Text>
+              <View style={[styles.streakBadge, { backgroundColor: isDark ? 'rgba(255, 109, 0, 0.2)' : 'rgba(255, 109, 0, 0.15)' }]}>
+                <Text style={styles.streakEmoji}>🔥</Text>
+                <Text style={[styles.streakText, { color: colors.streak }]}>
+                  {habit.currentStreak}
+                </Text>
+              </View>
             )}
+
             {/* Skip button */}
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: colors.error }]}
+              style={[
+                styles.actionButton,
+                styles.errorButton,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 23, 68, 0.2)' : 'rgba(255, 23, 68, 0.1)',
+                  borderColor: colors.error,
+                  opacity: isNotCompleted ? 0.5 : 1,
+                },
+              ]}
               onPress={() => onSwipeLeft(habit.id)}
+              disabled={isNotCompleted}
             >
-              <Ionicons name="close" size={20} color="#fff" />
+              <Ionicons name="close" size={18} color={colors.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -92,12 +123,24 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    marginVertical: 4,
+    marginVertical: 5,
   },
   habitCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 12,
+    padding: 14,
+    // Subtle shadow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E040FB',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   habitContent: {
     flexDirection: 'row',
@@ -105,42 +148,77 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  successButton: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#00E676',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  errorButton: {
+    borderWidth: 1.5,
   },
   habitInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   habitName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     flexShrink: 1,
+  },
+  dimmedText: {
+    opacity: 0.6,
   },
   strikethrough: {
     textDecorationLine: 'line-through',
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  streakEmoji: {
+    fontSize: 14,
   },
   streakText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
