@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { ProgressBar } from './ProgressBar';
 
@@ -14,6 +15,7 @@ interface GoalCardProps {
   showProgress?: boolean;
   linkedGoalName?: string;
   accentColor?: string;
+  allowExceedTarget?: boolean;
 }
 
 export const GoalCard: React.FC<GoalCardProps> = ({
@@ -26,12 +28,23 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   showProgress = true,
   linkedGoalName,
   accentColor,
+  allowExceedTarget = false,
 }) => {
   const { colors, isDark } = useTheme();
 
   const progress = target > 0 ? current / target : 0;
   const isComplete = current >= target;
   const progressColor = isComplete ? colors.success : (accentColor || colors.primary);
+
+  const handleIncrement = async () => {
+    if (onIncrement) {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onIncrement();
+    }
+  };
+
+  // Show increment button if not complete, OR if allowExceedTarget is true
+  const showIncrementButton = onIncrement && (!isComplete || allowExceedTarget);
 
   return (
     <TouchableOpacity
@@ -56,7 +69,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             style={[
               styles.name,
               { color: colors.text },
-              isComplete && styles.completedName,
+              isComplete && !allowExceedTarget && styles.completedName,
             ]}
             numberOfLines={2}
           >
@@ -80,7 +93,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
 
       {showProgress && (
         <View style={styles.progressContainer}>
-          <ProgressBar progress={progress} progressColor={progressColor} showOverflow />
+          <ProgressBar progress={progress} progressColor={progressColor} showOverflow={allowExceedTarget} />
         </View>
       )}
 
@@ -93,7 +106,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
         </View>
       )}
 
-      {onIncrement && !isComplete && (
+      {showIncrementButton && (
         <TouchableOpacity
           style={[
             styles.incrementButton,
@@ -106,7 +119,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
           ]}
           onPress={(e) => {
             e.stopPropagation();
-            onIncrement();
+            handleIncrement();
           }}
         >
           <Ionicons name="add" size={18} color={accentColor || colors.primary} />

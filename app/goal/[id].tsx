@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,19 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useWeeklyGoals, useMonthlyGoals, useYearlyGoals } from '../../hooks/useGoals';
 import { ProgressBar } from '../../components/ProgressBar';
 
 export default function GoalDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: string }>();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const {
     weeklyGoals,
@@ -71,8 +74,17 @@ export default function GoalDetailScreen() {
     }
   }, [type, id, getLinkedItems]);
 
+  const handleEditPress = () => {
+    Keyboard.dismiss();
+    setTimeout(() => {
+      setIsEditing(!isEditing);
+    }, 100);
+  };
+
   const handleSaveEdit = async () => {
     if (!goal || !editName.trim() || !editTarget) return;
+
+    Keyboard.dismiss();
 
     const updates = {
       name: editName.trim(),
@@ -80,18 +92,30 @@ export default function GoalDetailScreen() {
       current: parseInt(editCurrent) || 0,
     };
 
-    if (type === 'weekly') {
-      await updateWeeklyGoal(goal.id, updates);
-    } else if (type === 'monthly') {
-      await updateMonthlyGoal(goal.id, updates);
-    } else {
-      await updateYearlyGoal(goal.id, updates);
+    try {
+      if (type === 'weekly') {
+        await updateWeeklyGoal(goal.id, updates);
+      } else if (type === 'monthly') {
+        await updateMonthlyGoal(goal.id, updates);
+      } else {
+        await updateYearlyGoal(goal.id, updates);
+      }
+
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsEditing(false);
+
+      Alert.alert('Success', 'Goal updated successfully!', [{ text: 'OK' }]);
+    } catch (error) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', 'Failed to update goal');
     }
-    setIsEditing(false);
   };
 
   const handleIncrement = async () => {
     if (!goal) return;
+
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     if (type === 'weekly') {
       await incrementWeeklyGoal(goal.id);
     } else if (type === 'monthly') {
@@ -109,6 +133,7 @@ export default function GoalDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           if (goal) {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             if (type === 'weekly') {
               await archiveWeeklyGoal(goal.id);
             } else if (type === 'monthly') {
@@ -142,72 +167,82 @@ export default function GoalDetailScreen() {
         options={{
           title: isEditing ? 'Edit Goal' : goal.name,
           headerRight: () => (
-            <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-              <Text style={{ color: colors.primary, fontSize: 16 }}>
+            <TouchableOpacity onPress={handleEditPress} style={styles.headerButton}>
+              <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>
                 {isEditing ? 'Cancel' : 'Edit'}
               </Text>
             </TouchableOpacity>
           ),
         }}
       />
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {isEditing ? (
           <View style={styles.editSection}>
-            <Text style={[styles.label, { color: colors.text }]}>Goal Name</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Goal Name</Text>
             <TextInput
               style={[
                 styles.input,
                 {
-                  backgroundColor: colors.backgroundSecondary,
+                  backgroundColor: colors.cardBackground,
                   color: colors.text,
-                  borderColor: colors.border,
+                  borderColor: colors.cardBorder,
                 },
               ]}
               value={editName}
               onChangeText={setEditName}
+              placeholder="Enter goal name"
+              placeholderTextColor={colors.textTertiary}
             />
 
-            <Text style={[styles.label, { color: colors.text }]}>Target</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Target</Text>
             <TextInput
               style={[
                 styles.input,
                 {
-                  backgroundColor: colors.backgroundSecondary,
+                  backgroundColor: colors.cardBackground,
                   color: colors.text,
-                  borderColor: colors.border,
+                  borderColor: colors.cardBorder,
                 },
               ]}
               value={editTarget}
               onChangeText={setEditTarget}
               keyboardType="number-pad"
+              placeholder="Enter target"
+              placeholderTextColor={colors.textTertiary}
             />
 
-            <Text style={[styles.label, { color: colors.text }]}>Current Progress</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Current Progress</Text>
             <TextInput
               style={[
                 styles.input,
                 {
-                  backgroundColor: colors.backgroundSecondary,
+                  backgroundColor: colors.cardBackground,
                   color: colors.text,
-                  borderColor: colors.border,
+                  borderColor: colors.cardBorder,
                 },
               ]}
               value={editCurrent}
               onChangeText={setEditCurrent}
               keyboardType="number-pad"
+              placeholder="Enter current progress"
+              placeholderTextColor={colors.textTertiary}
             />
 
             <TouchableOpacity
               style={[styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={handleSaveEdit}
             >
+              <Ionicons name="checkmark" size={20} color="#fff" />
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             {/* Progress Section */}
-            <View style={[styles.progressSection, { backgroundColor: colors.backgroundSecondary }]}>
+            <View style={[styles.progressSection, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
               <View style={styles.progressHeader}>
                 <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>Progress</Text>
                 <View style={styles.progressValues}>
@@ -237,7 +272,7 @@ export default function GoalDetailScreen() {
             </TouchableOpacity>
 
             {/* Info Section */}
-            <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
+            <View style={[styles.infoSection, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{typeLabel} Goal</Text>
@@ -273,7 +308,7 @@ export default function GoalDetailScreen() {
                     {linkedItems.habits.map((habit) => (
                       <TouchableOpacity
                         key={habit.id}
-                        style={[styles.linkedItem, { backgroundColor: colors.backgroundSecondary }]}
+                        style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                         onPress={() => router.push(`/habit/${habit.id}`)}
                       >
                         <Ionicons
@@ -292,7 +327,7 @@ export default function GoalDetailScreen() {
                     {linkedItems.weeklyGoals.map((g) => (
                       <View
                         key={g.id}
-                        style={[styles.linkedItem, { backgroundColor: colors.backgroundSecondary }]}
+                        style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                       >
                         <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                         <Text style={[styles.linkedItemText, { color: colors.text }]}>{g.name}</Text>
@@ -304,7 +339,7 @@ export default function GoalDetailScreen() {
                     {linkedItems.monthlyGoals.map((g) => (
                       <View
                         key={g.id}
-                        style={[styles.linkedItem, { backgroundColor: colors.backgroundSecondary }]}
+                        style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
                       >
                         <Ionicons name="calendar" size={18} color={colors.textSecondary} />
                         <Text style={[styles.linkedItemText, { color: colors.text }]}>{g.name}</Text>
@@ -344,28 +379,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   editSection: {
     padding: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     marginBottom: 8,
     marginTop: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
-    height: 48,
-    borderRadius: 8,
+    height: 50,
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
   },
   saveButton: {
-    height: 48,
-    borderRadius: 8,
+    flexDirection: 'row',
+    height: 50,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 24,
+    gap: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E040FB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   saveButtonText: {
     color: '#fff',
@@ -375,7 +429,8 @@ const styles = StyleSheet.create({
   progressSection: {
     margin: 16,
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -384,15 +439,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   progressLabel: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   progressValues: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   currentValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '800',
   },
   separator: {
     fontSize: 20,
@@ -400,6 +458,7 @@ const styles = StyleSheet.create({
   },
   targetValue: {
     fontSize: 20,
+    fontWeight: '600',
   },
   completeBadge: {
     flexDirection: 'row',
@@ -407,8 +466,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     marginTop: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   completeText: {
     fontSize: 14,
@@ -420,8 +479,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E040FB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   incrementButtonText: {
     color: '#fff',
@@ -432,19 +502,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   infoLabel: {
     fontSize: 14,
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   linkedSection: {
     marginHorizontal: 16,
@@ -452,7 +523,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginBottom: 12,
   },
   emptyText: {
@@ -463,14 +534,16 @@ const styles = StyleSheet.create({
   linkedItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 12,
     marginBottom: 8,
     gap: 12,
+    borderWidth: 1,
   },
   linkedItemText: {
     flex: 1,
     fontSize: 15,
+    fontWeight: '500',
   },
   linkedItemType: {
     fontSize: 12,
@@ -482,13 +555,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 24,
     paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
     gap: 8,
   },
   archiveButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   bottomPadding: {
     height: 48,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { ProgressBar } from './ProgressBar';
 import type { WeeklyHabitWithProgress } from '../types/database';
@@ -16,13 +17,20 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
   onPress,
   onIncrement,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const target = habit.weeklyTarget?.target || 0;
   const current = habit.currentProgress;
   const progress = target > 0 ? current / target : 0;
   const isComplete = current >= target;
   const progressColor = isComplete ? colors.success : colors.primary;
+
+  const handleIncrement = async () => {
+    if (onIncrement) {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onIncrement();
+    }
+  };
 
   return (
     <TouchableOpacity
@@ -42,22 +50,31 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
             {habit.name}
           </Text>
           <View style={styles.progressRow}>
-            <ProgressBar progress={progress} progressColor={progressColor} height={6} />
+            <ProgressBar progress={progress} progressColor={progressColor} height={6} showOverflow />
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               {current}/{target}
             </Text>
           </View>
         </View>
 
+        {/* Always show increment button - users can exceed their minimum target */}
         {onIncrement && (
           <TouchableOpacity
-            style={[styles.incrementButton, { backgroundColor: progressColor }]}
+            style={[
+              styles.incrementButton,
+              {
+                backgroundColor: isDark
+                  ? progressColor + '25'
+                  : progressColor + '15',
+                borderColor: progressColor + '50',
+              },
+            ]}
             onPress={(e) => {
               e.stopPropagation();
-              onIncrement();
+              handleIncrement();
             }}
           >
-            <Ionicons name="add" size={20} color="#fff" />
+            <Ionicons name="add" size={18} color={progressColor} />
           </TouchableOpacity>
         )}
       </View>
@@ -99,6 +116,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 12,
