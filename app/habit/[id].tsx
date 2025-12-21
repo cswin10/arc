@@ -1,0 +1,443 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../hooks/useTheme';
+import { useHabits } from '../../hooks/useHabits';
+import { ProgressBar } from '../../components/ProgressBar';
+import { calculateStreak, calculateCompletionRate, formatDate, getToday } from '../../lib/utils';
+import type { Habit, HabitLog, StreakFreeze } from '../../types/database';
+
+export default function HabitDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { colors } = useTheme();
+  const { getHabitWithLogs, updateHabit, archiveHabit, logHabit, addStreakFreeze, removeStreakFreeze } = useHabits();
+
+  const [habit, setHabit] = useState<Habit | null>(null);
+  const [logs, setLogs] = useState<HabitLog[]>([]);
+  const [freezes, setFreezes] = useState<StreakFreeze[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+
+  const loadData = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    const data = await getHabitWithLogs(id);
+    if (data) {
+      setHabit(data.habit);
+      setLogs(data.logs);
+      setFreezes(data.freezes);
+      setEditName(data.habit.name);
+    }
+    setIsLoading(false);
+  }, [id, getHabitWithLogs]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSaveEdit = async () => {
+    if (!habit || !editName.trim()) return;
+    await updateHabit(habit.id, { name: editName.trim() });
+    setHabit({ ...habit, name: editName.trim() });
+    setIsEditing(false);
+  };
+
+  const handleArchive = () => {
+    Alert.alert('Archive Habit', 'This habit will be moved to your archive. You can restore it later.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Archive',
+        style: 'destructive',
+        onPress: async () => {
+          if (habit) {
+            await archiveHabit(habit.id);
+            router.back();
+          }
+        },
+      },
+    ]);
+  };
+
+  const toggleLogForDate = async (date: string, currentStatus: boolean | undefined) => {
+    if (!habit) return;
+
+    if (currentStatus === undefined) {
+      // Not logged -> logged as completed
+      await logHabit(habit.id, date, true);
+    } else if (currentStatus === true) {
+      // Completed -> not completed
+      await logHabit(habit.id, date, false);
+    } else {
+      // Not completed -> delete log (not logged)
+      // For now, toggle back to completed
+      await logHabit(habit.id, date, true);
+    }
+    await loadData();
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (!habit) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.text }]}>Habit not found</Text>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: colors.primary }]}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const { currentStreak, longestStreak } = calculateStreak(logs, freezes, habit.start_date);
+  const completionRate = calculateCompletionRate(logs, habit.start_date);
+
+  // Get last 30 days for calendar
+  const today = getToday();
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - (29 - i));
+    return formatDate(date);
+  });
+
+  const getLogStatus = (date: string): boolean | undefined => {
+    const log = logs.find((l) => l.date === date);
+    return log?.completed;
+  };
+
+  const hasFreezeForDate = (date: string): boolean => {
+    return freezes.some((f) => f.date === date);
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: isEditing ? 'Edit Habit' : habit.name,
+          headerRight: () => (
+            <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
+              <Text style={{ color: colors.primary, fontSize: 16 }}>
+                {isEditing ? 'Cancel' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        {isEditing ? (
+          <View style={styles.editSection}>
+            <Text style={[styles.label, { color: colors.text }]}>Habit Name</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={editName}
+              onChangeText={setEditName}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              onPress={handleSaveEdit}
+            >
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* Stats Section */}
+            <View style={[styles.statsContainer, { backgroundColor: colors.backgroundSecondary }]}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.streak }]}>{currentStreak}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Current Streak
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{longestStreak}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Best Streak</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.success }]}>{completionRate}%</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completion</Text>
+              </View>
+            </View>
+
+            {/* Progress Bar */}
+            <View style={styles.progressSection}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Completion Rate</Text>
+              <ProgressBar progress={completionRate / 100} height={12} />
+            </View>
+
+            {/* Calendar Grid */}
+            <View style={styles.calendarSection}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Last 30 Days</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                Tap to toggle log status
+              </Text>
+              <View style={styles.calendarGrid}>
+                {last30Days.map((date) => {
+                  const status = getLogStatus(date);
+                  const hasFreezeOnDate = hasFreezeForDate(date);
+
+                  let bgColor = colors.backgroundTertiary;
+                  if (status === true) bgColor = colors.success;
+                  else if (status === false) bgColor = colors.error;
+                  else if (hasFreezeOnDate) bgColor = colors.warning;
+
+                  return (
+                    <TouchableOpacity
+                      key={date}
+                      style={[styles.calendarDay, { backgroundColor: bgColor }]}
+                      onPress={() => toggleLogForDate(date, status)}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          { color: status !== undefined || hasFreezeOnDate ? '#fff' : colors.textTertiary },
+                        ]}
+                      >
+                        {new Date(date).getDate()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>Done</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.error }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>Skipped</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>Frozen</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Info Section */}
+            <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {habit.type.charAt(0).toUpperCase() + habit.type.slice(1)}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Start Date</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{habit.start_date}</Text>
+              </View>
+            </View>
+
+            {/* Archive Button */}
+            <TouchableOpacity
+              style={[styles.archiveButton, { borderColor: colors.error }]}
+              onPress={handleArchive}
+            >
+              <Ionicons name="archive-outline" size={20} color={colors.error} />
+              <Text style={[styles.archiveButtonText, { color: colors.error }]}>Archive Habit</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 18,
+    marginBottom: 16,
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  editSection: {
+    padding: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  input: {
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  saveButton: {
+    height: 48,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    margin: 16,
+    padding: 20,
+    borderRadius: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: '100%',
+  },
+  progressSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  calendarSection: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  calendarDay: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dayText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  legend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: 12,
+  },
+  infoSection: {
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  archiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  archiveButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bottomPadding: {
+    height: 48,
+  },
+});
