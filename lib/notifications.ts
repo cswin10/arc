@@ -1,222 +1,80 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import { Config } from '../constants/config';
-import { parseTimeString, isSunday, isLastDayOfMonth, getToday } from './utils';
+// Notifications stub - notifications are not available in Expo Go
+// This file provides no-op implementations so the app doesn't crash
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
-// Request permission for notifications
+// Request permission for notifications (no-op in Expo Go)
 export const requestNotificationPermissions = async (): Promise<boolean> => {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    return false;
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#3B82F6',
-    });
-  }
-
-  return true;
+  console.log('Notifications not available in Expo Go');
+  return false;
 };
 
-// Check if notifications are enabled
+// Check if notifications are enabled (always false in Expo Go)
 export const areNotificationsEnabled = async (): Promise<boolean> => {
-  const { status } = await Notifications.getPermissionsAsync();
-  return status === 'granted';
+  return false;
 };
 
-// Schedule daily reminder
-export const scheduleDailyReminder = async (time: string = Config.DEFAULT_REMINDER_TIME): Promise<string | null> => {
-  try {
-    // Cancel existing daily reminders first
-    await cancelDailyReminder();
-
-    const { hour, minute } = parseTimeString(time);
-
-    const identifier = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: Config.NOTIFICATIONS.DAILY_REMINDER_TITLE,
-        body: Config.NOTIFICATIONS.DAILY_REMINDER_BODY,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour,
-        minute,
-      },
-    });
-
-    return identifier;
-  } catch (error) {
-    console.error('Error scheduling daily reminder:', error);
-    return null;
-  }
+// Schedule daily reminder (no-op)
+export const scheduleDailyReminder = async (_time?: string): Promise<string | null> => {
+  console.log('Daily reminder not available in Expo Go');
+  return null;
 };
 
-// Cancel daily reminder
+// Cancel daily reminder (no-op)
 export const cancelDailyReminder = async (): Promise<void> => {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notification of scheduled) {
-    if (notification.content.title === Config.NOTIFICATIONS.DAILY_REMINDER_TITLE) {
-      await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-    }
-  }
+  // No-op
 };
 
-// Schedule weekly planning reminder (Sundays)
+// Schedule weekly planning reminder (no-op)
 export const scheduleWeeklyPlanningReminder = async (): Promise<string | null> => {
-  try {
-    await cancelWeeklyPlanningReminder();
-
-    const identifier = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: Config.NOTIFICATIONS.WEEKLY_PLANNING_TITLE,
-        body: Config.NOTIFICATIONS.WEEKLY_PLANNING_BODY,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: 1, // Sunday is 1 in Expo Notifications
-        hour: 9,
-        minute: 0,
-      },
-    });
-
-    return identifier;
-  } catch (error) {
-    console.error('Error scheduling weekly planning reminder:', error);
-    return null;
-  }
+  console.log('Weekly planning reminder not available in Expo Go');
+  return null;
 };
 
-// Cancel weekly planning reminder
+// Cancel weekly planning reminder (no-op)
 export const cancelWeeklyPlanningReminder = async (): Promise<void> => {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notification of scheduled) {
-    if (notification.content.title === Config.NOTIFICATIONS.WEEKLY_PLANNING_TITLE) {
-      await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-    }
-  }
+  // No-op
 };
 
-// Schedule monthly planning reminder
-// Note: This schedules for the next month end - needs to be rescheduled each month
+// Schedule monthly planning reminder (no-op)
 export const scheduleMonthlyPlanningReminder = async (): Promise<string | null> => {
-  try {
-    await cancelMonthlyPlanningReminder();
-
-    // Calculate next month's last day
-    const today = getToday();
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    const lastDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0);
-
-    // Set time to 9 AM
-    lastDayOfNextMonth.setHours(9, 0, 0, 0);
-
-    // Only schedule if it's in the future
-    if (lastDayOfNextMonth <= today) {
-      return null;
-    }
-
-    const identifier = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: Config.NOTIFICATIONS.MONTHLY_PLANNING_TITLE,
-        body: Config.NOTIFICATIONS.MONTHLY_PLANNING_BODY,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: lastDayOfNextMonth,
-      },
-    });
-
-    return identifier;
-  } catch (error) {
-    console.error('Error scheduling monthly planning reminder:', error);
-    return null;
-  }
+  console.log('Monthly planning reminder not available in Expo Go');
+  return null;
 };
 
-// Cancel monthly planning reminder
+// Cancel monthly planning reminder (no-op)
 export const cancelMonthlyPlanningReminder = async (): Promise<void> => {
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  for (const notification of scheduled) {
-    if (notification.content.title === Config.NOTIFICATIONS.MONTHLY_PLANNING_TITLE) {
-      await Notifications.cancelScheduledNotificationAsync(notification.identifier);
-    }
-  }
+  // No-op
 };
 
-// Cancel all scheduled notifications
+// Cancel all scheduled notifications (no-op)
 export const cancelAllNotifications = async (): Promise<void> => {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // No-op
 };
 
-// Get all scheduled notifications
-export const getScheduledNotifications = async (): Promise<Notifications.NotificationRequest[]> => {
-  return Notifications.getAllScheduledNotificationsAsync();
+// Get all scheduled notifications (always empty in Expo Go)
+export const getScheduledNotifications = async (): Promise<unknown[]> => {
+  return [];
 };
 
-// Setup all notifications based on user preferences
-export const setupNotifications = async (preferences: {
+// Setup all notifications based on user preferences (no-op)
+export const setupNotifications = async (_preferences: {
   daily_reminder: boolean;
   daily_reminder_time: string;
   weekly_planning_reminder: boolean;
   monthly_planning_reminder: boolean;
 }): Promise<void> => {
-  const hasPermission = await requestNotificationPermissions();
-
-  if (!hasPermission) {
-    return;
-  }
-
-  if (preferences.daily_reminder) {
-    await scheduleDailyReminder(preferences.daily_reminder_time);
-  } else {
-    await cancelDailyReminder();
-  }
-
-  if (preferences.weekly_planning_reminder) {
-    await scheduleWeeklyPlanningReminder();
-  } else {
-    await cancelWeeklyPlanningReminder();
-  }
-
-  if (preferences.monthly_planning_reminder) {
-    await scheduleMonthlyPlanningReminder();
-  } else {
-    await cancelMonthlyPlanningReminder();
-  }
+  console.log('Notifications not available in Expo Go');
 };
 
-// Add notification response listener
+// Add notification response listener (no-op, returns dummy unsubscribe)
 export const addNotificationResponseListener = (
-  callback: (response: Notifications.NotificationResponse) => void
-): Notifications.EventSubscription => {
-  return Notifications.addNotificationResponseReceivedListener(callback);
+  _callback: (response: unknown) => void
+): { remove: () => void } => {
+  return { remove: () => {} };
 };
 
-// Add notification received listener
+// Add notification received listener (no-op, returns dummy unsubscribe)
 export const addNotificationReceivedListener = (
-  callback: (notification: Notifications.Notification) => void
-): Notifications.EventSubscription => {
-  return Notifications.addNotificationReceivedListener(callback);
+  _callback: (notification: unknown) => void
+): { remove: () => void } => {
+  return { remove: () => {} };
 };
