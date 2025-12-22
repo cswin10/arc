@@ -282,7 +282,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 />
               </TouchableOpacity>
               {showGoalPicker && (
-                <ScrollView style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                <ScrollView style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]} nestedScrollEnabled>
                   <TouchableOpacity
                     style={[styles.goalOption, { borderBottomColor: colors.border }]}
                     onPress={() => {

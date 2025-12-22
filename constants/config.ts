@@ -10,7 +10,7 @@ export const Config = {
   SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key',
 
   // Date/Time
-  WEEK_START_DAY: 0, // 0 = Sunday
+  WEEK_START_DAY: 1, // 1 = Monday
   DEFAULT_REMINDER_TIME: '09:00',
 
   // Notifications

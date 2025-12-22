@@ -20,7 +20,7 @@ import type { Habit, HabitLog, StreakFreeze } from '../../types/database';
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const { getHabitWithLogs, updateHabit, archiveHabit, logHabit, addStreakFreeze, removeStreakFreeze } = useHabits();
+  const { getHabitWithLogs, updateHabit, archiveHabit, deleteHabit, logHabit, addStreakFreeze, removeStreakFreeze } = useHabits();
 
   const [habit, setHabit] = useState<Habit | null>(null);
   const [logs, setLogs] = useState<HabitLog[]>([]);
@@ -67,6 +67,37 @@ export default function HabitDetailScreen() {
         },
       },
     ]);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Habit',
+      'This will permanently delete this habit and all its logs. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (habit) {
+              await deleteHabit(habit.id);
+              router.back();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const toggleFreezeForDate = async (date: string) => {
+    if (!habit) return;
+    const hasFreezeOnDate = hasFreezeForDate(date);
+    if (hasFreezeOnDate) {
+      await removeStreakFreeze(habit.id, date);
+    } else {
+      await addStreakFreeze(habit.id, date);
+    }
+    await loadData();
   };
 
   const toggleLogForDate = async (date: string, currentStatus: boolean | undefined) => {
@@ -198,7 +229,7 @@ export default function HabitDetailScreen() {
             <View style={styles.calendarSection}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Last 30 Days</Text>
               <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                Tap to toggle log status
+                Tap to toggle • Long press to freeze
               </Text>
               <View style={styles.calendarGrid}>
                 {last30Days.map((date) => {
@@ -215,6 +246,8 @@ export default function HabitDetailScreen() {
                       key={date}
                       style={[styles.calendarDay, { backgroundColor: bgColor }]}
                       onPress={() => toggleLogForDate(date, status)}
+                      onLongPress={() => toggleFreezeForDate(date)}
+                      delayLongPress={500}
                     >
                       <Text
                         style={[
@@ -260,11 +293,20 @@ export default function HabitDetailScreen() {
 
             {/* Archive Button */}
             <TouchableOpacity
-              style={[styles.archiveButton, { borderColor: colors.error }]}
+              style={[styles.archiveButton, { borderColor: colors.textSecondary }]}
               onPress={handleArchive}
             >
-              <Ionicons name="archive-outline" size={20} color={colors.error} />
-              <Text style={[styles.archiveButtonText, { color: colors.error }]}>Archive Habit</Text>
+              <Ionicons name="archive-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.archiveButtonText, { color: colors.textSecondary }]}>Archive Habit</Text>
+            </TouchableOpacity>
+
+            {/* Delete Button */}
+            <TouchableOpacity
+              style={[styles.deleteButton, { borderColor: colors.error }]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.error} />
+              <Text style={[styles.deleteButtonText, { color: colors.error }]}>Delete Permanently</Text>
             </TouchableOpacity>
           </>
         )}
@@ -434,6 +476,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   archiveButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  deleteButtonText: {
     fontSize: 16,
     fontWeight: '500',
   },
