@@ -307,7 +307,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   incrementYearlyGoal: async (goalId: string, userId: string) => {
     try {
       await db.incrementYearlyGoal(goalId);
-      await get().fetchYearlyGoals(userId);
+      const { selectedYear } = get();
+      await get().fetchYearlyGoals(userId, selectedYear);
+      await get().fetchAllYearlyGoals(userId);
     } catch (error) {
       set({ error: 'Failed to increment yearly goal' });
     }

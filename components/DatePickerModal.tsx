@@ -111,8 +111,8 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="fade" transparent>
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[styles.container, { backgroundColor: colors.background }]}>
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={onClose}>
@@ -186,8 +186,8 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
               Today
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 };
