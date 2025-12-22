@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useYearlyGoals } from '../../hooks/useGoals';
 import { GoalCard } from '../../components/GoalCard';
@@ -48,15 +49,18 @@ export default function YearlyScreen() {
     setRefreshing(false);
   }, [refreshGoals]);
 
-  const goToPreviousYear = () => {
+  const goToPreviousYear = async () => {
+    await Haptics.selectionAsync();
     setCurrentYear((prev) => prev - 1);
   };
 
-  const goToNextYear = () => {
+  const goToNextYear = async () => {
+    await Haptics.selectionAsync();
     setCurrentYear((prev) => prev + 1);
   };
 
-  const goToThisYear = () => {
+  const goToThisYear = async () => {
+    await Haptics.selectionAsync();
     setCurrentYear(getToday().getFullYear());
   };
 

@@ -19,6 +19,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
 import { CompletionPopup } from '../../components/CompletionPopup';
+import { AmountInputModal } from '../../components/AmountInputModal';
 import {
   formatDate,
   formatWeekRange,
@@ -51,6 +52,12 @@ export default function WeeklyScreen() {
     current: number;
     target: number;
   }>({ visible: false, habitName: '', current: 0, target: 0 });
+  const [amountModal, setAmountModal] = useState<{
+    visible: boolean;
+    habitId: string;
+    habitName: string;
+    currentDayAmount: number;
+  }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
 
   useEffect(() => {
     const weekStartStr = formatDate(currentWeekStart);
@@ -76,16 +83,36 @@ export default function WeeklyScreen() {
     setCurrentWeekStart(getWeekStart());
   };
 
-  const handleIncrementWeeklyHabit = useCallback(
-    async (habitId: string) => {
+  const handleOpenAmountModal = useCallback(
+    (habitId: string) => {
       const habit = weeklyHabits.find((h) => h.id === habitId);
       if (!habit) return;
 
-      await logHabit(habitId, getTodayString(), true);
+      // Get today's logged amount
+      const today = getTodayString();
+      const todayLog = habit.logs?.find((l) => l.date === today);
+      const currentDayAmount = todayLog?.amount || 0;
+
+      setAmountModal({
+        visible: true,
+        habitId,
+        habitName: habit.name,
+        currentDayAmount,
+      });
+    },
+    [weeklyHabits]
+  );
+
+  const handleLogAmount = useCallback(
+    async (amount: number) => {
+      const habit = weeklyHabits.find((h) => h.id === amountModal.habitId);
+      if (!habit) return;
+
+      await logHabit(amountModal.habitId, getTodayString(), true, amount);
 
       // Show completion popup with updated progress
       const target = habit.weeklyTarget?.target || 0;
-      const newCurrent = habit.currentProgress + 1;
+      const newCurrent = habit.currentProgress + amount;
       setCompletionPopup({
         visible: true,
         habitName: habit.name,
@@ -93,7 +120,7 @@ export default function WeeklyScreen() {
         target: target,
       });
     },
-    [logHabit, weeklyHabits]
+    [logHabit, weeklyHabits, amountModal.habitId]
   );
 
   const handleCreateGoal = useCallback(
@@ -174,7 +201,7 @@ export default function WeeklyScreen() {
               key={habit.id}
               habit={habit}
               onPress={() => router.push(`/habit/${habit.id}`)}
-              onIncrement={isThisWeek ? () => handleIncrementWeeklyHabit(habit.id) : undefined}
+              onIncrement={isThisWeek ? () => handleOpenAmountModal(habit.id) : undefined}
             />
           ))
         )}
@@ -220,6 +247,14 @@ export default function WeeklyScreen() {
         current={completionPopup.current}
         target={completionPopup.target}
         onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
+      />
+
+      <AmountInputModal
+        visible={amountModal.visible}
+        habitName={amountModal.habitName}
+        currentDayAmount={amountModal.currentDayAmount}
+        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleLogAmount}
       />
     </View>
   );

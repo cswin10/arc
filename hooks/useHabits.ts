@@ -68,8 +68,8 @@ export const useHabits = () => {
       : async () => {},
     reorderHabits,
     logHabit: user
-      ? (habitId: string, date: string, completed: boolean) =>
-          logHabit(habitId, user.id, date, completed)
+      ? (habitId: string, date: string, completed: boolean, amount?: number) =>
+          logHabit(habitId, user.id, date, completed, amount)
       : async () => {},
     deleteHabitLog: user
       ? (habitId: string, date: string) => deleteHabitLog(habitId, date, user.id)

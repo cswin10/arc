@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
@@ -28,6 +29,7 @@ import {
   deleteMonthlyGoal,
   deleteYearlyGoal,
 } from '../lib/database';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import type { Habit, WeeklyGoal, MonthlyGoal, YearlyGoal } from '../types/database';
 
 type ArchivedItem = {
@@ -40,9 +42,14 @@ type ArchivedItem = {
 export default function ArchivedScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<ArchivedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ visible: boolean; item: ArchivedItem | null }>({
+    visible: false,
+    item: null,
+  });
 
   const fetchArchivedItems = useCallback(async () => {
     if (!user) return;
@@ -123,41 +130,37 @@ export default function ArchivedScreen() {
   };
 
   const handleDelete = (item: ArchivedItem) => {
-    Alert.alert(
-      'Delete Permanently',
-      `Are you sure you want to permanently delete "${item.name}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setDeleteDialog({ visible: true, item });
+  };
 
-              switch (item.type) {
-                case 'habit':
-                  await deleteHabit(item.id);
-                  break;
-                case 'weekly_goal':
-                  await deleteWeeklyGoal(item.id);
-                  break;
-                case 'monthly_goal':
-                  await deleteMonthlyGoal(item.id);
-                  break;
-                case 'yearly_goal':
-                  await deleteYearlyGoal(item.id);
-                  break;
-              }
+  const confirmDelete = async () => {
+    const item = deleteDialog.item;
+    if (!item) return;
 
-              setItems((prev) => prev.filter((i) => i.id !== item.id));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete item');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+      switch (item.type) {
+        case 'habit':
+          await deleteHabit(item.id);
+          break;
+        case 'weekly_goal':
+          await deleteWeeklyGoal(item.id);
+          break;
+        case 'monthly_goal':
+          await deleteMonthlyGoal(item.id);
+          break;
+        case 'yearly_goal':
+          await deleteYearlyGoal(item.id);
+          break;
+      }
+
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete item');
+    } finally {
+      setDeleteDialog({ visible: false, item: null });
+    }
   };
 
   const getTypeLabel = (item: ArchivedItem) => {
@@ -194,6 +197,11 @@ export default function ArchivedScreen() {
             title: 'Archived Items',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+            ),
           }}
         />
         <ActivityIndicator size="large" color={colors.primary} />
@@ -208,6 +216,11 @@ export default function ArchivedScreen() {
           title: 'Archived Items',
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ),
         }}
       />
 
@@ -260,6 +273,17 @@ export default function ArchivedScreen() {
           ))
         )}
       </ScrollView>
+
+      <ConfirmDialog
+        visible={deleteDialog.visible}
+        title="Delete Permanently"
+        message={`Are you sure you want to permanently delete "${deleteDialog.item?.name}"? This cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteDialog({ visible: false, item: null })}
+      />
     </View>
   );
 }
@@ -326,5 +350,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
   },
 });

@@ -43,6 +43,13 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     }
   };
 
+  const handlePress = async () => {
+    if (onPress) {
+      await Haptics.selectionAsync();
+      onPress();
+    }
+  };
+
   // Show increment button if not complete, OR if allowExceedTarget is true
   const showIncrementButton = onIncrement && (!isComplete || allowExceedTarget);
 
@@ -55,7 +62,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
           borderColor: accentColor ? accentColor + '30' : colors.cardBorder,
         },
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={styles.header}>

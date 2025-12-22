@@ -124,6 +124,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
+        <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
         <View style={[styles.container, { backgroundColor: colors.background }]}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={onClose}>
@@ -343,10 +344,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  dismissArea: {
+    flex: 1,
+  },
   container: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
+    maxHeight: '85%',
   },
   header: {
     flexDirection: 'row',
@@ -486,6 +490,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   bottomPadding: {
-    height: 40,
+    height: 100,
   },
 });

@@ -210,7 +210,7 @@ export const calculateCompletionRate = (
   return Math.round((completedDays / totalDays) * 100);
 };
 
-// Get weekly progress for a habit
+// Get weekly progress for a habit (sums amounts instead of counting logs)
 export const getWeeklyProgress = (
   logs: HabitLog[],
   weekStart: Date
@@ -219,9 +219,9 @@ export const getWeeklyProgress = (
   const weekStartStr = formatDate(weekStart);
   const weekEndStr = formatDate(weekEnd);
 
-  return logs.filter((log) => {
-    return log.completed && log.date >= weekStartStr && log.date <= weekEndStr;
-  }).length;
+  return logs
+    .filter((log) => log.completed && log.date >= weekStartStr && log.date <= weekEndStr)
+    .reduce((total, log) => total + (log.amount || 1), 0);
 };
 
 // Generate unique ID

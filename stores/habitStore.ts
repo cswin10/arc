@@ -20,7 +20,7 @@ interface HabitState {
   deleteHabit: (habitId: string) => Promise<void>;
   restoreHabit: (habitId: string, userId: string) => Promise<void>;
   reorderHabits: (habits: { id: string; order: number }[]) => Promise<void>;
-  logHabit: (habitId: string, userId: string, date: string, completed: boolean) => Promise<void>;
+  logHabit: (habitId: string, userId: string, date: string, completed: boolean, amount?: number) => Promise<void>;
   deleteHabitLog: (habitId: string, date: string, userId: string) => Promise<void>;
   setWeeklyTarget: (habitId: string, userId: string, weekStart: string, target: number) => Promise<void>;
   addStreakFreeze: (habitId: string, userId: string, date: string) => Promise<void>;
@@ -210,9 +210,9 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     }
   },
 
-  logHabit: async (habitId: string, userId: string, date: string, completed: boolean) => {
+  logHabit: async (habitId: string, userId: string, date: string, completed: boolean, amount?: number) => {
     try {
-      await db.logHabit(habitId, userId, date, completed);
+      await db.logHabit(habitId, userId, date, completed, amount);
       await get().fetchHabits(userId);
     } catch (error) {
       set({ error: 'Failed to log habit' });

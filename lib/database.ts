@@ -157,7 +157,8 @@ export const logHabit = async (
   habitId: string,
   userId: string,
   date: string,
-  completed: boolean
+  completed: boolean,
+  amount?: number
 ): Promise<HabitLog> => {
   // Check if log exists for this date
   const { data: existing } = await supabase
@@ -168,10 +169,13 @@ export const logHabit = async (
     .single();
 
   if (existing) {
-    // Update existing log
+    // Update existing log - add to existing amount if provided
+    const newAmount = amount !== undefined
+      ? (existing.amount || 0) + amount
+      : existing.amount;
     const { data, error } = await supabase
       .from('habit_logs')
-      .update({ completed })
+      .update({ completed, amount: newAmount })
       .eq('id', existing.id)
       .select()
       .single();
@@ -182,7 +186,7 @@ export const logHabit = async (
     // Create new log
     const { data, error } = await supabase
       .from('habit_logs')
-      .insert({ habit_id: habitId, user_id: userId, date, completed })
+      .insert({ habit_id: habitId, user_id: userId, date, completed, amount: amount || 1 })
       .select()
       .single();
 
