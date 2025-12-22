@@ -110,7 +110,7 @@ export const useWeeklyGoals = () => {
           updateWeeklyGoal(goalId, updates, user.id)
       : async () => {},
     incrementWeeklyGoal: user
-      ? (goalId: string) => incrementWeeklyGoal(goalId, user.id)
+      ? (goalId: string, amount?: number) => incrementWeeklyGoal(goalId, user.id, amount)
       : async () => {},
     archiveWeeklyGoal: user
       ? (goalId: string) => archiveWeeklyGoal(goalId, user.id)
@@ -169,7 +169,7 @@ export const useMonthlyGoals = () => {
           updateMonthlyGoal(goalId, updates, user.id)
       : async () => {},
     incrementMonthlyGoal: user
-      ? (goalId: string) => incrementMonthlyGoal(goalId, user.id)
+      ? (goalId: string, amount?: number) => incrementMonthlyGoal(goalId, user.id, amount)
       : async () => {},
     archiveMonthlyGoal: user
       ? (goalId: string) => archiveMonthlyGoal(goalId, user.id)
@@ -239,7 +239,7 @@ export const useYearlyGoals = () => {
           updateYearlyGoal(goalId, updates, user.id)
       : async () => {},
     incrementYearlyGoal: user
-      ? (goalId: string) => incrementYearlyGoal(goalId, user.id)
+      ? (goalId: string, amount?: number) => incrementYearlyGoal(goalId, user.id, amount)
       : async () => {},
     archiveYearlyGoal: user
       ? (goalId: string) => archiveYearlyGoal(goalId, user.id)

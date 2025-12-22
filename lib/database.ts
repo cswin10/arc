@@ -389,14 +389,14 @@ export const updateWeeklyGoal = async (
   return data;
 };
 
-export const incrementWeeklyGoal = async (goalId: string): Promise<WeeklyGoal> => {
+export const incrementWeeklyGoal = async (goalId: string, amount: number = 1): Promise<WeeklyGoal> => {
   const { data: goal } = await supabase
     .from('weekly_goals')
     .select('current')
     .eq('id', goalId)
     .single();
 
-  return updateWeeklyGoal(goalId, { current: (goal?.current || 0) + 1 });
+  return updateWeeklyGoal(goalId, { current: (goal?.current || 0) + amount });
 };
 
 export const archiveWeeklyGoal = async (goalId: string): Promise<void> => {
@@ -483,14 +483,14 @@ export const updateMonthlyGoal = async (
   return data;
 };
 
-export const incrementMonthlyGoal = async (goalId: string): Promise<MonthlyGoal> => {
+export const incrementMonthlyGoal = async (goalId: string, amount: number = 1): Promise<MonthlyGoal> => {
   const { data: goal } = await supabase
     .from('monthly_goals')
     .select('current')
     .eq('id', goalId)
     .single();
 
-  return updateMonthlyGoal(goalId, { current: (goal?.current || 0) + 1 });
+  return updateMonthlyGoal(goalId, { current: (goal?.current || 0) + amount });
 };
 
 export const archiveMonthlyGoal = async (goalId: string): Promise<void> => {
@@ -566,14 +566,14 @@ export const updateYearlyGoal = async (
   return data;
 };
 
-export const incrementYearlyGoal = async (goalId: string): Promise<YearlyGoal> => {
+export const incrementYearlyGoal = async (goalId: string, amount: number = 1): Promise<YearlyGoal> => {
   const { data: goal } = await supabase
     .from('yearly_goals')
     .select('current')
     .eq('id', goalId)
     .single();
 
-  return updateYearlyGoal(goalId, { current: (goal?.current || 0) + 1 });
+  return updateYearlyGoal(goalId, { current: (goal?.current || 0) + amount });
 };
 
 export const archiveYearlyGoal = async (goalId: string): Promise<void> => {

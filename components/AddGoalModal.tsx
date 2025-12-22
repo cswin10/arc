@@ -12,6 +12,7 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
@@ -47,6 +48,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { allYearlyGoals } = useYearlyGoals();
+  const insets = useSafeAreaInsets();
 
   const [name, setName] = useState('');
   const [target, setTarget] = useState('1');
@@ -125,7 +127,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
         style={styles.overlay}
       >
         <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={onClose}>
               <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancel</Text>
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
+    maxHeight: '80%',
   },
   header: {
     flexDirection: 'row',
@@ -445,7 +447,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    maxHeight: 300,
+    maxHeight: 220,
   },
   goalPickerScroll: {
     flex: 1,

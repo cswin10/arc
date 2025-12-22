@@ -17,6 +17,7 @@ import { useYearlyGoals } from '../../hooks/useGoals';
 import { GoalCard } from '../../components/GoalCard';
 import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
+import { AmountInputModal } from '../../components/AmountInputModal';
 import { getToday } from '../../lib/utils';
 import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../../constants/categories';
 import type { YearlyGoalCategory, YearlyGoal } from '../../types/database';
@@ -37,6 +38,12 @@ export default function YearlyScreen() {
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [currentYear, setCurrentYear] = useState(getToday().getFullYear());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(YEARLY_GOAL_CATEGORIES.map(c => c.id)));
+  const [amountModal, setAmountModal] = useState<{
+    visible: boolean;
+    goalId: string;
+    goalName: string;
+    current: number;
+  }>({ visible: false, goalId: '', goalName: '', current: 0 });
 
   useEffect(() => {
     setSelectedYear(currentYear);
@@ -78,6 +85,22 @@ export default function YearlyScreen() {
       }
     },
     [createYearlyGoal, currentYear]
+  );
+
+  const handleOpenAmountModal = useCallback((goal: YearlyGoal) => {
+    setAmountModal({
+      visible: true,
+      goalId: goal.id,
+      goalName: goal.name,
+      current: goal.current,
+    });
+  }, []);
+
+  const handleIncrementGoal = useCallback(
+    async (amount: number) => {
+      await incrementYearlyGoal(amountModal.goalId, amount);
+    },
+    [incrementYearlyGoal, amountModal.goalId]
   );
 
   const toggleCategory = (categoryId: string) => {
@@ -254,7 +277,7 @@ export default function YearlyScreen() {
                         current={goal.current}
                         target={goal.target}
                         onPress={() => router.push(`/goal/${goal.id}?type=yearly`)}
-                        onIncrement={isThisYear ? () => incrementYearlyGoal(goal.id) : undefined}
+                        onIncrement={isThisYear ? () => handleOpenAmountModal(goal) : undefined}
                         accentColor={category.color}
                       />
                     ))}
@@ -274,6 +297,14 @@ export default function YearlyScreen() {
         onSubmit={handleCreateGoal}
         type="yearly"
         period={currentYear}
+      />
+
+      <AmountInputModal
+        visible={amountModal.visible}
+        habitName={amountModal.goalName}
+        currentDayAmount={amountModal.current}
+        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleIncrementGoal}
       />
     </View>
   );

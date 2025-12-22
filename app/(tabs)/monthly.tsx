@@ -16,6 +16,7 @@ import { GoalCard } from '../../components/GoalCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
+import { AmountInputModal } from '../../components/AmountInputModal';
 import {
   formatDate,
   formatMonthYear,
@@ -41,6 +42,12 @@ export default function MonthlyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(getMonthStart());
+  const [amountModal, setAmountModal] = useState<{
+    visible: boolean;
+    goalId: string;
+    goalName: string;
+    current: number;
+  }>({ visible: false, goalId: '', goalName: '', current: 0 });
 
   const showPlanningPrompt = isLastDayOfMonth();
 
@@ -82,6 +89,22 @@ export default function MonthlyScreen() {
       }
     },
     [createMonthlyGoal, currentMonth]
+  );
+
+  const handleOpenAmountModal = useCallback((goal: typeof monthlyGoals[0]) => {
+    setAmountModal({
+      visible: true,
+      goalId: goal.id,
+      goalName: goal.name,
+      current: goal.current,
+    });
+  }, []);
+
+  const handleIncrementGoal = useCallback(
+    async (amount: number) => {
+      await incrementMonthlyGoal(amountModal.goalId, amount);
+    },
+    [incrementMonthlyGoal, amountModal.goalId]
   );
 
   const isThisMonth = formatDate(currentMonth) === formatDate(getMonthStart());
@@ -178,7 +201,7 @@ export default function MonthlyScreen() {
               target={goal.target}
               isRecurring={goal.is_recurring}
               onPress={() => router.push(`/goal/${goal.id}?type=monthly`)}
-              onIncrement={isThisMonth ? () => incrementMonthlyGoal(goal.id) : undefined}
+              onIncrement={isThisMonth ? () => handleOpenAmountModal(goal) : undefined}
             />
           ))
         )}
@@ -192,6 +215,14 @@ export default function MonthlyScreen() {
         onSubmit={handleCreateGoal}
         type="monthly"
         period={formatDate(currentMonth)}
+      />
+
+      <AmountInputModal
+        visible={amountModal.visible}
+        habitName={amountModal.goalName}
+        currentDayAmount={amountModal.current}
+        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleIncrementGoal}
       />
     </View>
   );

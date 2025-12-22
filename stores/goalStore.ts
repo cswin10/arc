@@ -37,7 +37,7 @@ interface GoalState {
   fetchWeeklyGoals: (userId: string, weekStart?: string) => Promise<void>;
   createWeeklyGoal: (goal: Omit<WeeklyGoal, 'id' | 'created_at'>) => Promise<WeeklyGoal>;
   updateWeeklyGoal: (goalId: string, updates: Partial<WeeklyGoal>, userId: string) => Promise<void>;
-  incrementWeeklyGoal: (goalId: string, userId: string) => Promise<void>;
+  incrementWeeklyGoal: (goalId: string, userId: string, amount?: number) => Promise<void>;
   archiveWeeklyGoal: (goalId: string, userId: string) => Promise<void>;
   copyRecurringToNextWeek: (userId: string) => Promise<void>;
   setSelectedWeek: (weekStart: string) => void;
@@ -46,7 +46,7 @@ interface GoalState {
   fetchMonthlyGoals: (userId: string, month?: string) => Promise<void>;
   createMonthlyGoal: (goal: Omit<MonthlyGoal, 'id' | 'created_at'>) => Promise<MonthlyGoal>;
   updateMonthlyGoal: (goalId: string, updates: Partial<MonthlyGoal>, userId: string) => Promise<void>;
-  incrementMonthlyGoal: (goalId: string, userId: string) => Promise<void>;
+  incrementMonthlyGoal: (goalId: string, userId: string, amount?: number) => Promise<void>;
   archiveMonthlyGoal: (goalId: string, userId: string) => Promise<void>;
   setSelectedMonth: (month: string) => void;
 
@@ -55,7 +55,7 @@ interface GoalState {
   fetchAllYearlyGoals: (userId: string) => Promise<void>;
   createYearlyGoal: (goal: Omit<YearlyGoal, 'id' | 'created_at'>) => Promise<YearlyGoal>;
   updateYearlyGoal: (goalId: string, updates: Partial<YearlyGoal>, userId: string) => Promise<void>;
-  incrementYearlyGoal: (goalId: string, userId: string) => Promise<void>;
+  incrementYearlyGoal: (goalId: string, userId: string, amount?: number) => Promise<void>;
   archiveYearlyGoal: (goalId: string, userId: string) => Promise<void>;
   getLinkedItems: (yearlyGoalId: string) => Promise<{ habits: Habit[]; weeklyGoals: WeeklyGoal[]; monthlyGoals: MonthlyGoal[] }>;
   setSelectedYear: (year: number) => void;
@@ -171,9 +171,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     }
   },
 
-  incrementWeeklyGoal: async (goalId: string, userId: string) => {
+  incrementWeeklyGoal: async (goalId: string, userId: string, amount: number = 1) => {
     try {
-      await db.incrementWeeklyGoal(goalId);
+      await db.incrementWeeklyGoal(goalId, amount);
       await get().fetchWeeklyGoals(userId);
     } catch (error) {
       set({ error: 'Failed to increment weekly goal' });
@@ -237,9 +237,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     }
   },
 
-  incrementMonthlyGoal: async (goalId: string, userId: string) => {
+  incrementMonthlyGoal: async (goalId: string, userId: string, amount: number = 1) => {
     try {
-      await db.incrementMonthlyGoal(goalId);
+      await db.incrementMonthlyGoal(goalId, amount);
       await get().fetchMonthlyGoals(userId);
     } catch (error) {
       set({ error: 'Failed to increment monthly goal' });
@@ -304,9 +304,9 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     }
   },
 
-  incrementYearlyGoal: async (goalId: string, userId: string) => {
+  incrementYearlyGoal: async (goalId: string, userId: string, amount: number = 1) => {
     try {
-      await db.incrementYearlyGoal(goalId);
+      await db.incrementYearlyGoal(goalId, amount);
       const { selectedYear } = get();
       await get().fetchYearlyGoals(userId, selectedYear);
       await get().fetchAllYearlyGoals(userId);
