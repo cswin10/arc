@@ -195,8 +195,10 @@ export default function ArchivedScreen() {
         <Stack.Screen
           options={{
             title: 'Archived Items',
+            headerShown: true,
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
+            headerShadowVisible: false,
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -214,8 +216,10 @@ export default function ArchivedScreen() {
       <Stack.Screen
         options={{
           title: 'Archived Items',
+          headerShown: true,
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerShadowVisible: false,
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -298,6 +302,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingTop: 8,
     paddingBottom: 100,
   },
   emptyState: {

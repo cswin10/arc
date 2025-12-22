@@ -58,6 +58,12 @@ export default function WeeklyScreen() {
     habitName: string;
     currentDayAmount: number;
   }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
+  const [goalAmountModal, setGoalAmountModal] = useState<{
+    visible: boolean;
+    goalId: string;
+    goalName: string;
+    current: number;
+  }>({ visible: false, goalId: '', goalName: '', current: 0 });
 
   useEffect(() => {
     const weekStartStr = formatDate(currentWeekStart);
@@ -137,6 +143,22 @@ export default function WeeklyScreen() {
       }
     },
     [createWeeklyGoal, currentWeekStart]
+  );
+
+  const handleOpenGoalAmountModal = useCallback((goal: typeof weeklyGoals[0]) => {
+    setGoalAmountModal({
+      visible: true,
+      goalId: goal.id,
+      goalName: goal.name,
+      current: goal.current,
+    });
+  }, []);
+
+  const handleIncrementGoal = useCallback(
+    async (amount: number) => {
+      await incrementWeeklyGoal(goalAmountModal.goalId, amount);
+    },
+    [incrementWeeklyGoal, goalAmountModal.goalId]
   );
 
   const isThisWeek = formatDate(currentWeekStart) === formatDate(getWeekStart());
@@ -225,7 +247,7 @@ export default function WeeklyScreen() {
               target={goal.target}
               isRecurring={goal.is_recurring}
               onPress={() => router.push(`/goal/${goal.id}?type=weekly`)}
-              onIncrement={isThisWeek ? () => incrementWeeklyGoal(goal.id) : undefined}
+              onIncrement={isThisWeek ? () => handleOpenGoalAmountModal(goal) : undefined}
             />
           ))
         )}
@@ -255,6 +277,14 @@ export default function WeeklyScreen() {
         currentDayAmount={amountModal.currentDayAmount}
         onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
         onSubmit={handleLogAmount}
+      />
+
+      <AmountInputModal
+        visible={goalAmountModal.visible}
+        habitName={goalAmountModal.goalName}
+        currentDayAmount={goalAmountModal.current}
+        onClose={() => setGoalAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleIncrementGoal}
       />
     </View>
   );
