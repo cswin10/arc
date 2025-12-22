@@ -273,54 +273,56 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
 
                   {showGoalPicker && (
                     <View style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-                      <TouchableOpacity
-                        style={[styles.goalOption, { borderBottomColor: colors.border }]}
-                        onPress={() => {
-                          setLinkedGoalId(null);
-                          setShowGoalPicker(false);
-                        }}
-                      >
-                        <Text style={{ color: colors.textSecondary }}>None</Text>
-                      </TouchableOpacity>
+                      <ScrollView style={styles.goalPickerScroll} nestedScrollEnabled>
+                        <TouchableOpacity
+                          style={[styles.goalOption, { borderBottomColor: colors.border }]}
+                          onPress={() => {
+                            setLinkedGoalId(null);
+                            setShowGoalPicker(false);
+                          }}
+                        >
+                          <Text style={{ color: colors.textSecondary }}>None</Text>
+                        </TouchableOpacity>
 
-                      {/* Goals organized by category */}
-                      {YEARLY_GOAL_CATEGORIES.map((category) => {
-                        const goals = goalsByCategory[category.id];
-                        if (!goals || goals.length === 0) return null;
+                        {/* Goals organized by category */}
+                        {YEARLY_GOAL_CATEGORIES.map((category) => {
+                          const goals = goalsByCategory[category.id];
+                          if (!goals || goals.length === 0) return null;
 
-                        return (
-                          <View key={category.id}>
-                            <View style={[styles.categoryHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                              <Text style={styles.categoryHeaderEmoji}>{category.emoji}</Text>
-                              <Text style={[styles.categoryHeaderText, { color: colors.textSecondary }]}>
-                                {category.label}
-                              </Text>
+                          return (
+                            <View key={category.id}>
+                              <View style={[styles.categoryHeader, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                                <Text style={styles.categoryHeaderEmoji}>{category.emoji}</Text>
+                                <Text style={[styles.categoryHeaderText, { color: colors.textSecondary }]}>
+                                  {category.label}
+                                </Text>
+                              </View>
+                              {goals.map((goal) => (
+                                <TouchableOpacity
+                                  key={goal.id}
+                                  style={[
+                                    styles.goalOption,
+                                    { borderBottomColor: colors.border },
+                                    linkedGoalId === goal.id && { backgroundColor: colors.primaryLight + '20' },
+                                  ]}
+                                  onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setLinkedGoalId(goal.id);
+                                    setShowGoalPicker(false);
+                                  }}
+                                >
+                                  <Text style={[styles.goalName, { color: colors.text }]} numberOfLines={1}>
+                                    {goal.name}
+                                  </Text>
+                                  <Text style={[styles.goalProgress, { color: colors.textSecondary }]}>
+                                    {goal.current}/{goal.target}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))}
                             </View>
-                            {goals.map((goal) => (
-                              <TouchableOpacity
-                                key={goal.id}
-                                style={[
-                                  styles.goalOption,
-                                  { borderBottomColor: colors.border },
-                                  linkedGoalId === goal.id && { backgroundColor: colors.primaryLight + '20' },
-                                ]}
-                                onPress={() => {
-                                  Haptics.selectionAsync();
-                                  setLinkedGoalId(goal.id);
-                                  setShowGoalPicker(false);
-                                }}
-                              >
-                                <Text style={[styles.goalName, { color: colors.text }]} numberOfLines={1}>
-                                  {goal.name}
-                                </Text>
-                                <Text style={[styles.goalProgress, { color: colors.textSecondary }]}>
-                                  {goal.current}/{goal.target}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        );
-                      })}
+                          );
+                        })}
+                      </ScrollView>
                     </View>
                   )}
                 </View>
@@ -439,6 +441,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     maxHeight: 300,
+  },
+  goalPickerScroll: {
+    flex: 1,
   },
   categoryHeader: {
     flexDirection: 'row',

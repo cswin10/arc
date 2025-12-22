@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useWeeklyGoals, useMonthlyGoals, useYearlyGoals } from '../../hooks/useGoals';
 import { ProgressBar } from '../../components/ProgressBar';
+import { Toast } from '../../components/Toast';
 
 export default function GoalDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: string }>();
@@ -51,6 +52,11 @@ export default function GoalDetailScreen() {
     weeklyGoals: any[];
     monthlyGoals: any[];
   } | null>(null);
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+
+  const hideToast = useCallback(() => {
+    setToast((prev) => ({ ...prev, visible: false }));
+  }, []);
 
   // Find the goal based on type
   const goal =
@@ -103,11 +109,10 @@ export default function GoalDetailScreen() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsEditing(false);
-
-      Alert.alert('Success', 'Goal updated successfully!', [{ text: 'OK' }]);
+      setToast({ visible: true, message: 'Goal updated successfully!', type: 'success' });
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Error', 'Failed to update goal');
+      setToast({ visible: true, message: 'Failed to update goal', type: 'error' });
     }
   };
 
@@ -366,6 +371,13 @@ export default function GoalDetailScreen() {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </>
   );
 }

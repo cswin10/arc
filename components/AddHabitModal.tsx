@@ -17,6 +17,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
 import { formatDate, getToday, getWeekStart } from '../lib/utils';
 import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
+import { DatePickerModal } from './DatePickerModal';
 import type { HabitType, YearlyGoal, YearlyGoalCategory } from '../types/database';
 
 interface AddHabitModalProps {
@@ -50,6 +51,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const [isRecurring, setIsRecurring] = useState(true);
   const [weeklyTarget, setWeeklyTarget] = useState('4');
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
 
   // Group yearly goals by category
@@ -231,21 +233,28 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
-              <TextInput
+              <TouchableOpacity
                 style={[
-                  styles.input,
+                  styles.dateButton,
                   {
                     backgroundColor: colors.backgroundSecondary,
-                    color: colors.text,
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textTertiary}
-                value={startDate}
-                onChangeText={setStartDate}
-              />
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                <Text style={[styles.dateText, { color: colors.text }]}>{startDate}</Text>
+              </TouchableOpacity>
             </View>
+
+            <DatePickerModal
+              visible={showDatePicker}
+              onClose={() => setShowDatePicker(false)}
+              onSelect={setStartDate}
+              selectedDate={startDate}
+              title="Start Date"
+            />
 
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text }]}>Link to Yearly Goal (Optional)</Text>
@@ -282,7 +291,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 />
               </TouchableOpacity>
               {showGoalPicker && (
-                <ScrollView style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                <ScrollView style={[styles.goalPicker, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]} nestedScrollEnabled>
                   <TouchableOpacity
                     style={[styles.goalOption, { borderBottomColor: colors.border }]}
                     onPress={() => {
@@ -480,5 +489,18 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
+  },
+  dateButton: {
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: 12,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

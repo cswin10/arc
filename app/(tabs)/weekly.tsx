@@ -18,6 +18,7 @@ import { WeeklyHabitCard } from '../../components/WeeklyHabitCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
+import { CompletionPopup } from '../../components/CompletionPopup';
 import {
   formatDate,
   formatWeekRange,
@@ -44,6 +45,12 @@ export default function WeeklyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
+  const [completionPopup, setCompletionPopup] = useState<{
+    visible: boolean;
+    habitName: string;
+    current: number;
+    target: number;
+  }>({ visible: false, habitName: '', current: 0, target: 0 });
 
   useEffect(() => {
     const weekStartStr = formatDate(currentWeekStart);
@@ -71,9 +78,22 @@ export default function WeeklyScreen() {
 
   const handleIncrementWeeklyHabit = useCallback(
     async (habitId: string) => {
+      const habit = weeklyHabits.find((h) => h.id === habitId);
+      if (!habit) return;
+
       await logHabit(habitId, getTodayString(), true);
+
+      // Show completion popup with updated progress
+      const target = habit.weeklyTarget?.target || 0;
+      const newCurrent = habit.currentProgress + 1;
+      setCompletionPopup({
+        visible: true,
+        habitName: habit.name,
+        current: newCurrent,
+        target: target,
+      });
     },
-    [logHabit]
+    [logHabit, weeklyHabits]
   );
 
   const handleCreateGoal = useCallback(
@@ -192,6 +212,14 @@ export default function WeeklyScreen() {
         onSubmit={handleCreateGoal}
         type="weekly"
         period={formatDate(currentWeekStart)}
+      />
+
+      <CompletionPopup
+        visible={completionPopup.visible}
+        habitName={completionPopup.habitName}
+        current={completionPopup.current}
+        target={completionPopup.target}
+        onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
       />
     </View>
   );

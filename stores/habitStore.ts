@@ -17,6 +17,7 @@ interface HabitState {
   createHabit: (habit: Omit<Habit, 'id' | 'created_at'>) => Promise<Habit>;
   updateHabit: (habitId: string, updates: Partial<Habit>) => Promise<void>;
   archiveHabit: (habitId: string) => Promise<void>;
+  deleteHabit: (habitId: string) => Promise<void>;
   restoreHabit: (habitId: string, userId: string) => Promise<void>;
   reorderHabits: (habits: { id: string; order: number }[]) => Promise<void>;
   logHabit: (habitId: string, userId: string, date: string, completed: boolean) => Promise<void>;
@@ -162,6 +163,20 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       }
     } catch (error) {
       set({ isLoading: false, error: 'Failed to archive habit' });
+    }
+  },
+
+  deleteHabit: async (habitId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const habit = get().allHabits.find((h) => h.id === habitId);
+      await db.deleteHabit(habitId);
+      if (habit) {
+        await get().fetchHabits(habit.user_id);
+        await get().fetchArchivedHabits(habit.user_id);
+      }
+    } catch (error) {
+      set({ isLoading: false, error: 'Failed to delete habit' });
     }
   },
 

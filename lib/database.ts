@@ -73,6 +73,20 @@ export const archiveHabit = async (habitId: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const deleteHabit = async (habitId: string): Promise<void> => {
+  // Delete related records first
+  await supabase.from('habit_logs').delete().eq('habit_id', habitId);
+  await supabase.from('streak_freezes').delete().eq('habit_id', habitId);
+  await supabase.from('weekly_targets').delete().eq('habit_id', habitId);
+
+  const { error } = await supabase
+    .from('habits')
+    .delete()
+    .eq('id', habitId);
+
+  if (error) throw error;
+};
+
 export const restoreHabit = async (habitId: string): Promise<void> => {
   const { error } = await supabase
     .from('habits')
@@ -390,6 +404,15 @@ export const archiveWeeklyGoal = async (goalId: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const deleteWeeklyGoal = async (goalId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('weekly_goals')
+    .delete()
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
 // Copy recurring goals to next week
 export const copyRecurringWeeklyGoals = async (
   userId: string,
@@ -475,6 +498,15 @@ export const archiveMonthlyGoal = async (goalId: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const deleteMonthlyGoal = async (goalId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('monthly_goals')
+    .delete()
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
 // ==================== Yearly Goals ====================
 
 export const getYearlyGoals = async (userId: string, year: number): Promise<YearlyGoal[]> => {
@@ -544,6 +576,20 @@ export const archiveYearlyGoal = async (goalId: string): Promise<void> => {
   const { error } = await supabase
     .from('yearly_goals')
     .update({ is_archived: true })
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
+export const deleteYearlyGoal = async (goalId: string): Promise<void> => {
+  // Unlink any linked items first
+  await supabase.from('habits').update({ linked_yearly_goal_id: null }).eq('linked_yearly_goal_id', goalId);
+  await supabase.from('weekly_goals').update({ linked_yearly_goal_id: null }).eq('linked_yearly_goal_id', goalId);
+  await supabase.from('monthly_goals').update({ linked_yearly_goal_id: null }).eq('linked_yearly_goal_id', goalId);
+
+  const { error } = await supabase
+    .from('yearly_goals')
+    .delete()
     .eq('id', goalId);
 
   if (error) throw error;

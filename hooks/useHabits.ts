@@ -16,6 +16,7 @@ export const useHabits = () => {
     createHabit,
     updateHabit,
     archiveHabit,
+    deleteHabit,
     restoreHabit,
     reorderHabits,
     logHabit,
@@ -61,6 +62,7 @@ export const useHabits = () => {
         },
     updateHabit,
     archiveHabit,
+    deleteHabit,
     restoreHabit: user
       ? (habitId: string) => restoreHabit(habitId, user.id)
       : async () => {},

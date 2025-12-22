@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { ProgressBar } from './ProgressBar';
+import { getWeekDays, formatDate } from '../lib/utils';
 import type { WeeklyHabitWithProgress } from '../types/database';
 
 interface WeeklyHabitCardProps {
@@ -24,6 +25,21 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
   const progress = target > 0 ? current / target : 0;
   const isComplete = current >= target;
   const progressColor = isComplete ? colors.success : colors.primary;
+
+  // Get week days and log status for each day
+  const weekDays = useMemo(() => {
+    const days = getWeekDays();
+    return days.map((date) => {
+      const dateStr = formatDate(date);
+      const log = habit.logs?.find((l) => l.date === dateStr);
+      const dayLabel = date.toLocaleDateString('en-US', { weekday: 'narrow' });
+      return {
+        date: dateStr,
+        dayLabel,
+        status: log ? (log.completed ? 'done' : 'skipped') : 'pending',
+      };
+    });
+  }, [habit.logs]);
 
   const handleIncrement = async () => {
     if (onIncrement) {
@@ -46,18 +62,41 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
     >
       <View style={styles.content}>
         <View style={styles.info}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-            {habit.name}
-          </Text>
-          <View style={styles.progressRow}>
-            <ProgressBar progress={progress} progressColor={progressColor} height={6} showOverflow />
+          <View style={styles.topRow}>
+            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+              {habit.name}
+            </Text>
             <Text style={[styles.progressText, { color: colors.textSecondary }]}>
               {current}/{target}
             </Text>
           </View>
+
+          {/* Week progress circles */}
+          <View style={styles.weekDots}>
+            {weekDays.map((day) => (
+              <View key={day.date} style={styles.dayContainer}>
+                <Text style={[styles.dayLabel, { color: colors.textTertiary }]}>
+                  {day.dayLabel}
+                </Text>
+                <View
+                  style={[
+                    styles.dayDot,
+                    {
+                      backgroundColor:
+                        day.status === 'done'
+                          ? colors.success
+                          : day.status === 'skipped'
+                          ? colors.error
+                          : colors.backgroundTertiary,
+                    },
+                  ]}
+                />
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* Always show increment button - users can exceed their minimum target */}
+        {/* Increment button - positioned to avoid overlap */}
         {onIncrement && (
           <TouchableOpacity
             style={[
@@ -74,7 +113,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
               handleIncrement();
             }}
           >
-            <Ionicons name="add" size={18} color={progressColor} />
+            <Ionicons name="add" size={20} color={progressColor} />
           </TouchableOpacity>
         )}
       </View>
@@ -96,29 +135,47 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
+    marginRight: 12,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   name: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 8,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    flex: 1,
+    marginRight: 8,
   },
   progressText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  weekDots: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayContainer: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayLabel: {
+    fontSize: 10,
     fontWeight: '500',
-    minWidth: 40,
+  },
+  dayDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
   incrementButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
   },
 });

@@ -21,6 +21,7 @@ import { WeeklyHabitCard } from '../../components/WeeklyHabitCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddHabitModal } from '../../components/AddHabitModal';
+import { CompletionPopup } from '../../components/CompletionPopup';
 import { formatDisplayDate, getToday, getTodayString, formatDate, getWeekStart, isSunday } from '../../lib/utils';
 
 export default function TodayScreen() {
@@ -48,6 +49,12 @@ export default function TodayScreen() {
   const [newTaskName, setNewTaskName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [habitType, setHabitType] = useState<'daily' | 'weekly'>('daily');
+  const [completionPopup, setCompletionPopup] = useState<{
+    visible: boolean;
+    habitName: string;
+    current: number;
+    target: number;
+  }>({ visible: false, habitName: '', current: 0, target: 0 });
 
   const today = getToday();
   const todayStr = getTodayString();
@@ -115,9 +122,22 @@ export default function TodayScreen() {
 
   const handleIncrementWeeklyHabit = useCallback(
     async (habitId: string) => {
+      const habit = weeklyHabits.find((h) => h.id === habitId);
+      if (!habit) return;
+
       await logHabit(habitId, todayStr, true);
+
+      // Show completion popup with updated progress
+      const target = habit.weeklyTarget?.target || 0;
+      const newCurrent = habit.currentProgress + 1;
+      setCompletionPopup({
+        visible: true,
+        habitName: habit.name,
+        current: newCurrent,
+        target: target,
+      });
     },
-    [logHabit, todayStr]
+    [logHabit, todayStr, weeklyHabits]
   );
 
   const openAddHabitModal = (type: 'daily' | 'weekly') => {
@@ -274,6 +294,14 @@ export default function TodayScreen() {
         onClose={() => setShowAddHabit(false)}
         onSubmit={handleAddHabit}
         type={habitType}
+      />
+
+      <CompletionPopup
+        visible={completionPopup.visible}
+        habitName={completionPopup.habitName}
+        current={completionPopup.current}
+        target={completionPopup.target}
+        onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
       />
     </View>
   );
