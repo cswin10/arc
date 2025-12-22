@@ -4,10 +4,7 @@
   },
   "build": {
     "base": {
-      "node": "20.18.0",
-      "install": {
-        "command": "yarn install --frozen-lockfile"
-      }
+      "node": "20.18.0"
     },
     "development": {
       "extends": "base",
