@@ -11,6 +11,7 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
@@ -42,6 +43,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { allYearlyGoals } = useYearlyGoals();
+  const insets = useSafeAreaInsets();
 
   const [name, setName] = useState('');
   // Use fixedType if provided, otherwise default to 'daily'
@@ -105,13 +107,12 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const typeLabel = effectiveType === 'weekly' ? 'Weekly' : 'Daily';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+        style={[styles.overlay, { backgroundColor: colors.background, paddingTop: insets.top }]}
       >
-        <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={onClose}>
               <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancel</Text>
@@ -354,15 +355,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  dismissArea: {
-    flex: 1,
   },
   container: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
