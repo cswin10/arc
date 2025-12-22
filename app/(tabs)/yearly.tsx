@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -44,6 +44,7 @@ export default function YearlyScreen() {
     goalName: string;
     current: number;
   }>({ visible: false, goalId: '', goalName: '', current: 0 });
+  const isOpeningModal = useRef(false);
 
   useEffect(() => {
     setSelectedYear(currentYear);
@@ -88,12 +89,17 @@ export default function YearlyScreen() {
   );
 
   const handleOpenAmountModal = useCallback((goal: YearlyGoal) => {
+    if (isOpeningModal.current) return;
+    isOpeningModal.current = true;
     setAmountModal({
       visible: true,
       goalId: goal.id,
       goalName: goal.name,
       current: goal.current,
     });
+    setTimeout(() => {
+      isOpeningModal.current = false;
+    }, 300);
   }, []);
 
   const handleIncrementGoal = useCallback(
@@ -127,9 +133,6 @@ export default function YearlyScreen() {
   // Calculate stats
   const totalGoals = yearlyGoals.length;
   const completedGoals = yearlyGoals.filter((g) => g.current >= g.target).length;
-  const totalProgress = yearlyGoals.reduce((acc, g) => acc + Math.min(g.current, g.target), 0);
-  const totalTarget = yearlyGoals.reduce((acc, g) => acc + g.target, 0);
-  const overallProgress = totalTarget > 0 ? Math.round((totalProgress / totalTarget) * 100) : 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -164,15 +167,7 @@ export default function YearlyScreen() {
         {/* Stats Overview */}
         {totalGoals > 0 && (
           <View style={[styles.statsContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
-            <View style={styles.mainStat}>
-              <Text style={[styles.mainStatValue, { color: colors.primary }]}>
-                {overallProgress}%
-              </Text>
-              <Text style={[styles.mainStatLabel, { color: colors.textSecondary }]}>
-                Overall Progress
-              </Text>
-            </View>
-            <View style={styles.secondaryStats}>
+            <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.text }]}>{totalGoals}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Goals</Text>
@@ -181,19 +176,6 @@ export default function YearlyScreen() {
                 <Text style={[styles.statValue, { color: colors.success }]}>{completedGoals}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
               </View>
-            </View>
-
-            {/* Progress bar */}
-            <View style={[styles.progressBarContainer, { backgroundColor: colors.backgroundTertiary }]}>
-              <View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: `${Math.min(overallProgress, 100)}%`,
-                    backgroundColor: colors.primary,
-                  }
-                ]}
-              />
             </View>
           </View>
         )}
@@ -351,10 +333,9 @@ const styles = StyleSheet.create({
   statsContainer: {
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    alignItems: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#E040FB',
@@ -367,24 +348,9 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  mainStat: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  mainStatValue: {
-    fontSize: 52,
-    fontWeight: '800',
-  },
-  mainStatLabel: {
-    fontSize: 13,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  secondaryStats: {
+  statsRow: {
     flexDirection: 'row',
-    gap: 48,
-    marginBottom: 16,
+    justifyContent: 'space-around',
   },
   statItem: {
     alignItems: 'center',
@@ -398,16 +364,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  progressBarContainer: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    borderRadius: 3,
   },
   addButton: {
     flexDirection: 'row',
