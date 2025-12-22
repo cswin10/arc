@@ -37,6 +37,7 @@ export interface HabitLog {
   user_id: string;
   date: string;
   completed: boolean;
+  amount?: number;
   created_at: string;
 }
 

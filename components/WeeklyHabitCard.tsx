@@ -26,7 +26,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
   const isComplete = current >= target;
   const progressColor = isComplete ? colors.success : colors.primary;
 
-  // Get week days and log status for each day
+  // Get week days and log status/amount for each day
   const weekDays = useMemo(() => {
     const days = getWeekDays();
     return days.map((date) => {
@@ -37,6 +37,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
         date: dateStr,
         dayLabel,
         status: log ? (log.completed ? 'done' : 'skipped') : 'pending',
+        amount: log?.amount || 0,
       };
     });
   }, [habit.logs]);
@@ -71,7 +72,7 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
             </Text>
           </View>
 
-          {/* Week progress circles */}
+          {/* Week progress - show amounts for each day */}
           <View style={styles.weekDots}>
             {weekDays.map((day) => (
               <View key={day.date} style={styles.dayContainer}>
@@ -90,7 +91,13 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
                           : colors.backgroundTertiary,
                     },
                   ]}
-                />
+                >
+                  {day.amount > 0 && (
+                    <Text style={styles.dayAmount}>
+                      {day.amount > 99 ? '99+' : day.amount}
+                    </Text>
+                  )}
+                </View>
               </View>
             ))}
           </View>
@@ -166,9 +173,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   dayDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dayAmount: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   incrementButton: {
     width: 44,
