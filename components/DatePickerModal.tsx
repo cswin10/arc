@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
-import { formatDate } from '../lib/utils';
+import { formatDate, formatShortDate } from '../lib/utils';
 import { Config } from '../constants/config';
 
 interface DatePickerModalProps {

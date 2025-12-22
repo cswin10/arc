@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
-import { formatDate, getToday, getWeekStart } from '../lib/utils';
+import { formatDate, getToday, getWeekStart, formatShortDate } from '../lib/utils';
 import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
 import { DatePickerModal } from './DatePickerModal';
 import type { HabitType, YearlyGoal, YearlyGoalCategory } from '../types/database';
@@ -244,7 +244,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 onPress={() => setShowDatePicker(true)}
               >
                 <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                <Text style={[styles.dateText, { color: colors.text }]}>{startDate}</Text>
+                <Text style={[styles.dateText, { color: colors.text }]}>{formatShortDate(startDate)}</Text>
               </TouchableOpacity>
             </View>
 

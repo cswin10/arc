@@ -275,21 +275,9 @@ export default function SettingsScreen() {
       <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>Habits & Goals</Text>
       <View style={[styles.section, { backgroundColor: colors.cardBackground }]}>
         <SettingRow
-          icon="list-outline"
-          label="Manage Daily Habits"
-          onPress={() => Alert.alert('Coming Soon', 'Habit management will be available soon.')}
-          colors={colors}
-        />
-        <SettingRow
-          icon="repeat-outline"
-          label="Manage Weekly Habits"
-          onPress={() => Alert.alert('Coming Soon', 'Habit management will be available soon.')}
-          colors={colors}
-        />
-        <SettingRow
           icon="archive-outline"
           label="Archived Items"
-          onPress={() => Alert.alert('Coming Soon', 'Archive management will be available soon.')}
+          onPress={() => router.push('/archived')}
           colors={colors}
         />
       </View>

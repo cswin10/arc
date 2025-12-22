@@ -35,12 +35,12 @@ export const formatDisplayDate = (date: Date | string): string => {
 };
 
 export const formatShortDate = (date: Date | string): string => {
-  return formatDate(date, 'MMM d');
+  return formatDate(date, 'd MMM');
 };
 
 export const formatWeekRange = (weekStart: Date): string => {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: Config.WEEK_START_DAY as 0 | 1 | 2 | 3 | 4 | 5 | 6 });
-  return `${formatDate(weekStart, 'MMM d')} - ${formatDate(weekEnd, 'MMM d, yyyy')}`;
+  return `${formatDate(weekStart, 'd MMM')} - ${formatDate(weekEnd, 'd MMM yyyy')}`;
 };
 
 export const formatMonthYear = (date: Date | string): string => {
