@@ -32,6 +32,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
+        lazy: true,
+        freezeOnBlur: true,
         headerStyle: {
           backgroundColor: colors.background,
           elevation: 0,
