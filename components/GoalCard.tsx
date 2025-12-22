@@ -84,7 +84,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
             />
           )}
         </View>
-        <View style={styles.progressText}>
+        <View style={[styles.progressText, showIncrementButton && styles.progressTextWithButton]}>
           <Text style={[styles.current, { color: progressColor }]}>{current}</Text>
           <Text style={[styles.divider, { color: colors.textTertiary }]}>/</Text>
           <Text style={[styles.target, { color: colors.textSecondary }]}>{target}</Text>
@@ -181,6 +181,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
   },
+  progressTextWithButton: {
+    marginRight: 40,
+  },
   current: {
     fontSize: 18,
     fontWeight: '700',
@@ -209,7 +212,7 @@ const styles = StyleSheet.create({
   incrementButton: {
     position: 'absolute',
     right: 12,
-    bottom: 12,
+    top: 12,
     width: 34,
     height: 34,
     borderRadius: 17,

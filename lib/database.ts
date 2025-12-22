@@ -595,6 +595,71 @@ export const deleteYearlyGoal = async (goalId: string): Promise<void> => {
   if (error) throw error;
 };
 
+// ==================== Archived Items ====================
+
+export const getArchivedWeeklyGoals = async (userId: string): Promise<WeeklyGoal[]> => {
+  const { data, error } = await supabase
+    .from('weekly_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getArchivedMonthlyGoals = async (userId: string): Promise<MonthlyGoal[]> => {
+  const { data, error } = await supabase
+    .from('monthly_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getArchivedYearlyGoals = async (userId: string): Promise<YearlyGoal[]> => {
+  const { data, error } = await supabase
+    .from('yearly_goals')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_archived', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const restoreWeeklyGoal = async (goalId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('weekly_goals')
+    .update({ is_archived: false })
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
+export const restoreMonthlyGoal = async (goalId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('monthly_goals')
+    .update({ is_archived: false })
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
+export const restoreYearlyGoal = async (goalId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('yearly_goals')
+    .update({ is_archived: false })
+    .eq('id', goalId);
+
+  if (error) throw error;
+};
+
 // Get items linked to a yearly goal
 export const getLinkedItems = async (yearlyGoalId: string): Promise<{
   habits: Habit[];
