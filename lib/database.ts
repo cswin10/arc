@@ -299,10 +299,15 @@ export const getDailyTasks = async (userId: string, date: string): Promise<Daily
     .select('*')
     .eq('user_id', userId)
     .eq('date', date)
+    .order('priority', { ascending: false })
     .order('order', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  // Ensure priority has a default value for existing tasks
+  return (data || []).map(task => ({
+    ...task,
+    priority: task.priority ?? 5
+  }));
 };
 
 export const createDailyTask = async (

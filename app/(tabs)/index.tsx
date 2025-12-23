@@ -37,6 +37,8 @@ export default function TodayScreen() {
     createHabit,
     logHabit,
     setWeeklyTarget,
+    addStreakFreeze,
+    removeStreakFreeze,
   } = useHabits();
   const {
     dailyTasks,
@@ -45,6 +47,7 @@ export default function TodayScreen() {
     createDailyTask,
     deleteDailyTask,
     toggleComplete,
+    updatePriority,
   } = useDailyTasks();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -94,6 +97,20 @@ export default function TodayScreen() {
   const handleHabitPress = useCallback((habitId: string) => {
     router.push(`/habit/${habitId}`);
   }, []);
+
+  const handleFreezeHabit = useCallback(
+    async (habitId: string) => {
+      await addStreakFreeze(habitId, todayStr);
+    },
+    [addStreakFreeze, todayStr]
+  );
+
+  const handleUnfreezeHabit = useCallback(
+    async (habitId: string) => {
+      await removeStreakFreeze(habitId, todayStr);
+    },
+    [removeStreakFreeze, todayStr]
+  );
 
   const handleAddTask = useCallback(async () => {
     if (!newTaskName.trim()) return;
@@ -252,6 +269,7 @@ export default function TodayScreen() {
                 task={task}
                 onToggle={toggleComplete}
                 onDelete={deleteDailyTask}
+                onPriorityChange={updatePriority}
               />
             ))}
             {completedTasks.length > 0 && (
@@ -290,6 +308,8 @@ export default function TodayScreen() {
               onSwipeRight={handleSwipeRight}
               onSwipeLeft={handleSwipeLeft}
               onPress={handleHabitPress}
+              onFreeze={handleFreezeHabit}
+              onUnfreeze={handleUnfreezeHabit}
             />
           ))
         )}

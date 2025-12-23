@@ -9,19 +9,49 @@ interface TaskItemProps {
   task: DailyTask;
   onToggle: (taskId: string, completed: boolean) => void;
   onDelete: (taskId: string) => void;
+  onPriorityChange?: (taskId: string, priority: number) => void;
 }
 
-export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
-  const { colors, isDark } = useTheme();
+const getPriorityColor = (priority: number, colors: any) => {
+  if (priority >= 8) return colors.error; // High priority - red
+  if (priority >= 5) return colors.warning; // Medium priority - orange
+  return colors.textTertiary; // Low priority - gray
+};
 
-  const handleToggle = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+const getPriorityLabel = (priority: number) => {
+  if (priority >= 8) return 'High';
+  if (priority >= 5) return 'Med';
+  return 'Low';
+};
+
+export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange }) => {
+  const { colors, isDark } = useTheme();
+  const priority = task.priority ?? 5;
+  const priorityColor = getPriorityColor(priority, colors);
+
+  const handleToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onToggle(task.id, !task.completed);
   };
 
-  const handleDelete = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handleDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onDelete(task.id);
+  };
+
+  const cyclePriority = () => {
+    if (!onPriorityChange) return;
+    Haptics.selectionAsync();
+    // Cycle: Low (1-4) -> Med (5-7) -> High (8-10) -> Low
+    let newPriority: number;
+    if (priority < 5) {
+      newPriority = 5; // Low -> Med
+    } else if (priority < 8) {
+      newPriority = 9; // Med -> High
+    } else {
+      newPriority = 3; // High -> Low
+    }
+    onPriorityChange(task.id, newPriority);
   };
 
   return (
@@ -33,6 +63,8 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) 
             ? (isDark ? 'rgba(0, 230, 118, 0.08)' : 'rgba(0, 230, 118, 0.06)')
             : colors.cardBackground,
           borderColor: task.completed ? colors.success : colors.cardBorder,
+          borderLeftColor: task.completed ? colors.success : priorityColor,
+          borderLeftWidth: 3,
         },
       ]}
     >
@@ -53,16 +85,29 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) 
         </View>
       </TouchableOpacity>
 
-      <Text
-        style={[
-          styles.taskName,
-          { color: task.completed ? colors.textTertiary : colors.text },
-          task.completed && styles.completed,
-        ]}
-        numberOfLines={2}
-      >
-        {task.name}
-      </Text>
+      <View style={styles.contentContainer}>
+        <Text
+          style={[
+            styles.taskName,
+            { color: task.completed ? colors.textTertiary : colors.text },
+            task.completed && styles.completed,
+          ]}
+          numberOfLines={2}
+        >
+          {task.name}
+        </Text>
+      </View>
+
+      {onPriorityChange && !task.completed && (
+        <TouchableOpacity
+          style={[styles.priorityBadge, { backgroundColor: priorityColor + '20' }]}
+          onPress={cyclePriority}
+        >
+          <Text style={[styles.priorityText, { color: priorityColor }]}>
+            {getPriorityLabel(priority)}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={[
@@ -82,6 +127,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
+    paddingLeft: 12,
     borderRadius: 14,
     borderWidth: 1,
     marginHorizontal: 16,
@@ -99,7 +145,7 @@ const styles = StyleSheet.create({
     }),
   },
   checkbox: {
-    marginRight: 14,
+    marginRight: 12,
   },
   checkboxInner: {
     width: 26,
@@ -109,14 +155,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  taskName: {
+  contentContainer: {
     flex: 1,
+  },
+  taskName: {
     fontSize: 15,
     fontWeight: '500',
     lineHeight: 22,
   },
   completed: {
     textDecorationLine: 'line-through',
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   deleteButton: {
     padding: 8,
