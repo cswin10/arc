@@ -42,9 +42,9 @@ export const WeeklyHabitCard: React.FC<WeeklyHabitCardProps> = ({
     });
   }, [habit.logs]);
 
-  const handleIncrement = async () => {
+  const handleIncrement = () => {
     if (onIncrement) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onIncrement();
     }
   };

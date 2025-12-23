@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useHabits } from '../../hooks/useHabits';
@@ -22,6 +23,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddHabitModal } from '../../components/AddHabitModal';
 import { CompletionPopup } from '../../components/CompletionPopup';
+import { AmountInputModal } from '../../components/AmountInputModal';
 import { formatDisplayDate, getToday, getTodayString, formatDate, getWeekStart, isSunday } from '../../lib/utils';
 
 export default function TodayScreen() {
@@ -35,6 +37,8 @@ export default function TodayScreen() {
     createHabit,
     logHabit,
     setWeeklyTarget,
+    addStreakFreeze,
+    removeStreakFreeze,
   } = useHabits();
   const {
     dailyTasks,
@@ -43,6 +47,7 @@ export default function TodayScreen() {
     createDailyTask,
     deleteDailyTask,
     toggleComplete,
+    updatePriority,
   } = useDailyTasks();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -55,6 +60,12 @@ export default function TodayScreen() {
     current: number;
     target: number;
   }>({ visible: false, habitName: '', current: 0, target: 0 });
+  const [amountModal, setAmountModal] = useState<{
+    visible: boolean;
+    habitId: string;
+    habitName: string;
+    currentDayAmount: number;
+  }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
 
   const today = getToday();
   const todayStr = getTodayString();
@@ -87,9 +98,24 @@ export default function TodayScreen() {
     router.push(`/habit/${habitId}`);
   }, []);
 
+  const handleFreezeHabit = useCallback(
+    async (habitId: string) => {
+      await addStreakFreeze(habitId, todayStr);
+    },
+    [addStreakFreeze, todayStr]
+  );
+
+  const handleUnfreezeHabit = useCallback(
+    async (habitId: string) => {
+      await removeStreakFreeze(habitId, todayStr);
+    },
+    [removeStreakFreeze, todayStr]
+  );
+
   const handleAddTask = useCallback(async () => {
     if (!newTaskName.trim()) return;
     try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await createDailyTask(newTaskName.trim());
       setNewTaskName('');
     } catch (error) {
@@ -120,16 +146,35 @@ export default function TodayScreen() {
     [createHabit, dailyHabits.length, weeklyHabits.length, setWeeklyTarget, weekStart]
   );
 
-  const handleIncrementWeeklyHabit = useCallback(
-    async (habitId: string) => {
+  const handleOpenAmountModal = useCallback(
+    (habitId: string) => {
       const habit = weeklyHabits.find((h) => h.id === habitId);
       if (!habit) return;
 
-      await logHabit(habitId, todayStr, true);
+      // Get today's logged amount
+      const todayLog = habit.logs?.find((l) => l.date === todayStr);
+      const currentDayAmount = todayLog?.amount || 0;
+
+      setAmountModal({
+        visible: true,
+        habitId,
+        habitName: habit.name,
+        currentDayAmount,
+      });
+    },
+    [weeklyHabits, todayStr]
+  );
+
+  const handleLogAmount = useCallback(
+    async (amount: number) => {
+      const habit = weeklyHabits.find((h) => h.id === amountModal.habitId);
+      if (!habit) return;
+
+      await logHabit(amountModal.habitId, todayStr, true, amount);
 
       // Show completion popup with updated progress
       const target = habit.weeklyTarget?.target || 0;
-      const newCurrent = habit.currentProgress + 1;
+      const newCurrent = habit.currentProgress + amount;
       setCompletionPopup({
         visible: true,
         habitName: habit.name,
@@ -137,7 +182,7 @@ export default function TodayScreen() {
         target: target,
       });
     },
-    [logHabit, todayStr, weeklyHabits]
+    [logHabit, todayStr, weeklyHabits, amountModal.habitId]
   );
 
   const openAddHabitModal = (type: 'daily' | 'weekly') => {
@@ -152,6 +197,7 @@ export default function TodayScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -223,6 +269,7 @@ export default function TodayScreen() {
                 task={task}
                 onToggle={toggleComplete}
                 onDelete={deleteDailyTask}
+                onPriorityChange={updatePriority}
               />
             ))}
             {completedTasks.length > 0 && (
@@ -261,6 +308,8 @@ export default function TodayScreen() {
               onSwipeRight={handleSwipeRight}
               onSwipeLeft={handleSwipeLeft}
               onPress={handleHabitPress}
+              onFreeze={handleFreezeHabit}
+              onUnfreeze={handleUnfreezeHabit}
             />
           ))
         )}
@@ -281,7 +330,7 @@ export default function TodayScreen() {
               key={habit.id}
               habit={habit}
               onPress={() => handleHabitPress(habit.id)}
-              onIncrement={() => handleIncrementWeeklyHabit(habit.id)}
+              onIncrement={() => handleOpenAmountModal(habit.id)}
             />
           ))
         )}
@@ -302,6 +351,14 @@ export default function TodayScreen() {
         current={completionPopup.current}
         target={completionPopup.target}
         onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
+      />
+
+      <AmountInputModal
+        visible={amountModal.visible}
+        habitName={amountModal.habitName}
+        currentDayAmount={amountModal.currentDayAmount}
+        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleLogAmount}
       />
     </View>
   );

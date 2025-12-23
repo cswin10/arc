@@ -36,16 +36,16 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   const isComplete = current >= target;
   const progressColor = isComplete ? colors.success : (accentColor || colors.primary);
 
-  const handleIncrement = async () => {
+  const handleIncrement = () => {
     if (onIncrement) {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onIncrement();
     }
   };
 
-  const handlePress = async () => {
+  const handlePress = () => {
     if (onPress) {
-      await Haptics.selectionAsync();
+      Haptics.selectionAsync();
       onPress();
     }
   };

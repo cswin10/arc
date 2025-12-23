@@ -287,7 +287,7 @@ export default function HabitDetailScreen() {
               </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Start Date</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{habit.start_date}</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{formatDate(habit.start_date, 'd MMMM yyyy')}</Text>
               </View>
             </View>
 

@@ -65,6 +65,7 @@ export interface DailyTask {
   date: string;
   completed: boolean;
   order: number;
+  priority: number; // 1-10, higher = more important
   created_at: string;
 }
 
@@ -121,6 +122,7 @@ export interface HabitWithStats extends Habit {
   longestStreak: number;
   completionRate: number;
   todayLog?: HabitLog;
+  isTodayFrozen?: boolean;
 }
 
 export interface WeeklyHabitWithProgress extends Habit {

@@ -38,17 +38,21 @@ export const useDailyTasks = () => {
     error,
     refresh,
     createDailyTask: user
-      ? (name: string, date?: string) =>
+      ? (name: string, date?: string, priority: number = 5) =>
           createDailyTask({
             user_id: user.id,
             name,
             date: date || formatDate(getToday()),
             completed: false,
             order: dailyTasks.length,
+            priority,
           })
       : async () => {
           throw new Error('Not authenticated');
         },
+    updatePriority: user
+      ? (taskId: string, priority: number) => updateDailyTask(taskId, { priority }, user.id)
+      : async () => {},
     updateDailyTask: user
       ? (taskId: string, updates: Parameters<typeof updateDailyTask>[1]) =>
           updateDailyTask(taskId, updates, user.id)

@@ -198,12 +198,6 @@ export default function SettingsScreen() {
           colors={colors}
         />
         <SettingRow
-          icon="lock-closed-outline"
-          label="Change Password"
-          onPress={() => Alert.alert('Coming Soon', 'Password change will be available soon.')}
-          colors={colors}
-        />
-        <SettingRow
           icon="log-out-outline"
           label="Log Out"
           onPress={handleLogout}

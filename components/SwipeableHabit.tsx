@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import type { HabitWithStats } from '../types/database';
 
@@ -9,6 +10,8 @@ interface SwipeableHabitProps {
   onSwipeRight: (habitId: string) => void;
   onSwipeLeft: (habitId: string) => void;
   onPress?: (habitId: string) => void;
+  onFreeze?: (habitId: string) => void;
+  onUnfreeze?: (habitId: string) => void;
 }
 
 export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
@@ -16,12 +19,24 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   onSwipeRight,
   onSwipeLeft,
   onPress,
+  onFreeze,
+  onUnfreeze,
 }) => {
   const { colors, isDark } = useTheme();
 
   const isCompleted = habit.todayLog?.completed === true;
   const isNotCompleted = habit.todayLog?.completed === false;
   const hasLog = habit.todayLog !== undefined;
+  const isFrozen = habit.isTodayFrozen === true;
+
+  const handleFreeze = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isFrozen) {
+      onUnfreeze?.(habit.id);
+    } else {
+      onFreeze?.(habit.id);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -85,6 +100,12 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
                 <Text style={[styles.statusText, { color: colors.error }]}>Skipped</Text>
               </View>
             )}
+            {isFrozen && !hasLog && (
+              <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(100, 181, 246, 0.2)' : 'rgba(100, 181, 246, 0.15)' }]}>
+                <Ionicons name="snow" size={12} color="#64B5F6" />
+                <Text style={[styles.statusText, { color: '#64B5F6' }]}>Frozen</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.rightSection}>
@@ -95,6 +116,25 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
                   {habit.currentStreak}
                 </Text>
               </View>
+            )}
+
+            {/* Freeze button */}
+            {(onFreeze || onUnfreeze) && !hasLog && (
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.freezeButton,
+                  {
+                    backgroundColor: isFrozen
+                      ? '#64B5F6'
+                      : (isDark ? 'rgba(100, 181, 246, 0.2)' : 'rgba(100, 181, 246, 0.1)'),
+                    borderColor: '#64B5F6',
+                  },
+                ]}
+                onPress={handleFreeze}
+              >
+                <Ionicons name="snow" size={16} color={isFrozen ? '#fff' : '#64B5F6'} />
+              </TouchableOpacity>
             )}
 
             {/* Skip button */}
@@ -168,6 +208,9 @@ const styles = StyleSheet.create({
     }),
   },
   errorButton: {
+    borderWidth: 1.5,
+  },
+  freezeButton: {
     borderWidth: 1.5,
   },
   habitInfo: {

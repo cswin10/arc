@@ -65,6 +65,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
           const { currentStreak, longestStreak } = calculateStreak(logs, freezes, habit.start_date);
           const completionRate = calculateCompletionRate(logs, habit.start_date);
           const todayLog = todayLogs.find((l) => l.habit_id === habit.id);
+          const isTodayFrozen = freezes.some((f) => f.date === today);
 
           return {
             ...habit,
@@ -72,6 +73,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
             longestStreak,
             completionRate,
             todayLog,
+            isTodayFrozen,
           };
         })
       );

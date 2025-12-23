@@ -126,8 +126,8 @@ export default function MonthlyScreen() {
             {formatMonthYear(currentMonth)}
           </Text>
           {isThisMonth && (
-            <View style={[styles.currentBadge, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[styles.currentBadgeText, { color: colors.primary }]}>This Month</Text>
+            <View style={[styles.currentBadge, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.currentBadgeText, { color: '#fff' }]}>This Month</Text>
             </View>
           )}
         </TouchableOpacity>
