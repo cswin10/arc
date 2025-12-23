@@ -175,8 +175,8 @@ export default function WeeklyScreen() {
             {formatWeekRange(currentWeekStart)}
           </Text>
           {isThisWeek && (
-            <View style={[styles.currentBadge, { backgroundColor: colors.primaryLight }]}>
-              <Text style={[styles.currentBadgeText, { color: colors.primary }]}>This Week</Text>
+            <View style={[styles.currentBadge, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.currentBadgeText, { color: '#fff' }]}>This Week</Text>
             </View>
           )}
         </TouchableOpacity>

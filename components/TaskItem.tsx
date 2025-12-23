@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
 import type { DailyTask } from '../types/database';
 
@@ -12,6 +13,16 @@ interface TaskItemProps {
 
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
   const { colors, isDark } = useTheme();
+
+  const handleToggle = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onToggle(task.id, !task.completed);
+  };
+
+  const handleDelete = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onDelete(task.id);
+  };
 
   return (
     <View
@@ -27,7 +38,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) 
     >
       <TouchableOpacity
         style={styles.checkbox}
-        onPress={() => onToggle(task.id, !task.completed)}
+        onPress={handleToggle}
       >
         <View
           style={[
@@ -58,7 +69,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) 
           styles.deleteButton,
           { backgroundColor: isDark ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255, 23, 68, 0.08)' },
         ]}
-        onPress={() => onDelete(task.id)}
+        onPress={handleDelete}
       >
         <Ionicons name="trash-outline" size={16} color={colors.error} />
       </TouchableOpacity>

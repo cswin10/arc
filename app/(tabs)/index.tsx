@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useHabits } from '../../hooks/useHabits';
@@ -90,6 +91,7 @@ export default function TodayScreen() {
   const handleAddTask = useCallback(async () => {
     if (!newTaskName.trim()) return;
     try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await createDailyTask(newTaskName.trim());
       setNewTaskName('');
     } catch (error) {
@@ -152,6 +154,7 @@ export default function TodayScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

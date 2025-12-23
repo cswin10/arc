@@ -125,29 +125,6 @@ export default function StatsScreen() {
           </View>
         </View>
 
-        {/* Yearly Goals Progress */}
-        {yearlyGoals.length > 0 && (
-          <View style={[styles.section, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Yearly Goals Progress</Text>
-            {yearlyGoals.map((goal) => (
-              <View key={goal.id} style={styles.yearlyGoalRow}>
-                <View style={styles.yearlyGoalInfo}>
-                  <Text style={[styles.yearlyGoalName, { color: colors.text }]}>{goal.name}</Text>
-                  <Text style={[styles.yearlyGoalProgress, { color: colors.textSecondary }]}>
-                    {goal.current}/{goal.target} ({Math.round((goal.current / goal.target) * 100)}%)
-                  </Text>
-                </View>
-                <ProgressBar
-                  progress={goal.current / goal.target}
-                  height={8}
-                  progressColor={goal.current >= goal.target ? colors.success : colors.primary}
-                  showOverflow
-                />
-              </View>
-            ))}
-          </View>
-        )}
-
         <View style={styles.bottomPadding} />
       </ScrollView>
     </>
@@ -225,22 +202,6 @@ const styles = StyleSheet.create({
   goalValue: {
     fontSize: 14,
     fontWeight: '500',
-  },
-  yearlyGoalRow: {
-    marginBottom: 16,
-  },
-  yearlyGoalInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  yearlyGoalName: {
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-  },
-  yearlyGoalProgress: {
-    fontSize: 13,
   },
   bottomPadding: {
     height: 48,

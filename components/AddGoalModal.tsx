@@ -121,13 +121,12 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
+        style={[styles.overlay, { backgroundColor: colors.background, paddingTop: insets.top }]}
       >
-        <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: Math.max(insets.bottom, 20) }]}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={onClose}>
               <Text style={[styles.cancelButton, { color: colors.textSecondary }]}>Cancel</Text>
@@ -344,15 +343,9 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  dismissArea: {
-    flex: 1,
   },
   container: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
