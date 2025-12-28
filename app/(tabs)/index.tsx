@@ -214,6 +214,11 @@ export default function TodayScreen() {
     setShowAddHabit(true);
   };
 
+  // Filter habits that have started by the selected date
+  const visibleDailyHabits = dailyHabits.filter(
+    (habit) => habit.start_date <= selectedDateStr
+  );
+
   const incompleteTasks = dailyTasks.filter((t) => !t.completed);
   const completedTasks = dailyTasks.filter((t) => t.completed);
 
@@ -334,7 +339,7 @@ export default function TodayScreen() {
 
         {/* Daily Habits Section */}
         <SectionHeader title="Daily Habits" onAdd={() => openAddHabitModal('daily')} />
-        {dailyHabits.length === 0 ? (
+        {visibleDailyHabits.length === 0 ? (
           <EmptyState
             icon="fitness-outline"
             title="No daily habits yet"
@@ -343,7 +348,7 @@ export default function TodayScreen() {
             onAction={() => openAddHabitModal('daily')}
           />
         ) : (
-          dailyHabits.map((habit) => (
+          visibleDailyHabits.map((habit) => (
             <SwipeableHabit
               key={habit.id}
               habit={habit}
