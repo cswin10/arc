@@ -298,16 +298,24 @@ export const getDailyTasks = async (userId: string, date: string): Promise<Daily
     .from('daily_tasks')
     .select('*')
     .eq('user_id', userId)
-    .eq('date', date)
-    .order('priority', { ascending: false })
-    .order('order', { ascending: true });
+    .eq('date', date);
 
   if (error) throw error;
-  // Ensure priority has a default value for existing tasks
-  return (data || []).map(task => ({
-    ...task,
-    priority: task.priority ?? 5
-  }));
+
+  // Ensure priority has a default value and sort by priority (desc) then name (asc)
+  return (data || [])
+    .map(task => ({
+      ...task,
+      priority: task.priority ?? 5
+    }))
+    .sort((a, b) => {
+      // First sort by priority (higher first)
+      if (b.priority !== a.priority) {
+        return b.priority - a.priority;
+      }
+      // Then sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
 };
 
 export const createDailyTask = async (

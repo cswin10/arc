@@ -5,13 +5,19 @@ import { useTheme } from '../hooks/useTheme';
 import { useHabits } from '../hooks/useHabits';
 import { useYearlyGoals, useMonthlyGoals, useWeeklyGoals } from '../hooks/useGoals';
 import { ProgressBar } from '../components/ProgressBar';
+import { formatWeekRange, getWeekStart, getMonthStart, formatDate } from '../lib/utils';
+import { format } from 'date-fns';
 
 export default function StatsScreen() {
   const { colors } = useTheme();
   const { dailyHabits, weeklyHabits } = useHabits();
-  const { yearlyGoals } = useYearlyGoals();
+  const { yearlyGoals, selectedYear } = useYearlyGoals();
   const { monthlyGoals } = useMonthlyGoals();
   const { weeklyGoals } = useWeeklyGoals();
+
+  // Get current period labels
+  const currentWeekRange = formatWeekRange(getWeekStart());
+  const currentMonth = format(new Date(), 'MMMM yyyy');
 
   // Calculate stats
   const totalHabits = dailyHabits.length + weeklyHabits.length;
@@ -100,24 +106,33 @@ export default function StatsScreen() {
           )}
         </View>
 
-        {/* Goals Summary */}
+        {/* Goals Summary - Current Periods Only */}
         <View style={[styles.section, { backgroundColor: colors.backgroundSecondary }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Goals Summary</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Current Goals</Text>
           <View style={styles.goalsSummary}>
             <View style={styles.goalRow}>
-              <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>Weekly Goals</Text>
+              <View>
+                <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>This Week</Text>
+                <Text style={[styles.periodLabel, { color: colors.textTertiary }]}>{currentWeekRange}</Text>
+              </View>
               <Text style={[styles.goalValue, { color: colors.text }]}>
                 {completedWeeklyGoals}/{weeklyGoals.length} completed
               </Text>
             </View>
             <View style={styles.goalRow}>
-              <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>Monthly Goals</Text>
+              <View>
+                <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>This Month</Text>
+                <Text style={[styles.periodLabel, { color: colors.textTertiary }]}>{currentMonth}</Text>
+              </View>
               <Text style={[styles.goalValue, { color: colors.text }]}>
                 {completedMonthlyGoals}/{monthlyGoals.length} completed
               </Text>
             </View>
             <View style={styles.goalRow}>
-              <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>Yearly Goals</Text>
+              <View>
+                <Text style={[styles.goalLabel, { color: colors.textSecondary }]}>This Year</Text>
+                <Text style={[styles.periodLabel, { color: colors.textTertiary }]}>{selectedYear}</Text>
+              </View>
               <Text style={[styles.goalValue, { color: colors.text }]}>
                 {completedYearlyGoals}/{yearlyGoals.length} completed
               </Text>
@@ -198,6 +213,10 @@ const styles = StyleSheet.create({
   },
   goalLabel: {
     fontSize: 14,
+  },
+  periodLabel: {
+    fontSize: 11,
+    marginTop: 2,
   },
   goalValue: {
     fontSize: 14,

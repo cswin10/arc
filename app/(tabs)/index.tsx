@@ -25,6 +25,7 @@ import { AddHabitModal } from '../../components/AddHabitModal';
 import { CompletionPopup } from '../../components/CompletionPopup';
 import { AmountInputModal } from '../../components/AmountInputModal';
 import { formatDisplayDate, getToday, getTodayString, formatDate, getWeekStart, isSunday } from '../../lib/utils';
+import { addDays, subDays, isToday, isSameDay } from 'date-fns';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
@@ -54,6 +55,7 @@ export default function TodayScreen() {
   const [newTaskName, setNewTaskName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [habitType, setHabitType] = useState<'daily' | 'weekly'>('daily');
+  const [selectedDate, setSelectedDate] = useState(getToday());
   const [completionPopup, setCompletionPopup] = useState<{
     visible: boolean;
     habitName: string;
@@ -69,16 +71,38 @@ export default function TodayScreen() {
 
   const today = getToday();
   const todayStr = getTodayString();
+  const selectedDateStr = formatDate(selectedDate);
+  const isSelectedToday = isToday(selectedDate);
   const weekStart = formatDate(getWeekStart());
+
+  // Refresh tasks when selected date changes
+  useEffect(() => {
+    refreshTasks(selectedDateStr);
+  }, [selectedDateStr, refreshTasks]);
+
+  const goToPreviousDay = () => {
+    Haptics.selectionAsync();
+    setSelectedDate(subDays(selectedDate, 1));
+  };
+
+  const goToNextDay = () => {
+    Haptics.selectionAsync();
+    setSelectedDate(addDays(selectedDate, 1));
+  };
+
+  const goToToday = () => {
+    Haptics.selectionAsync();
+    setSelectedDate(getToday());
+  };
 
   // Show weekly planning prompt on Sundays
   const showWeeklyPrompt = isSunday();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshHabits(), refreshTasks()]);
+    await Promise.all([refreshHabits(), refreshTasks(selectedDateStr)]);
     setRefreshing(false);
-  }, [refreshHabits, refreshTasks]);
+  }, [refreshHabits, refreshTasks, selectedDateStr]);
 
   const handleSwipeRight = useCallback(
     async (habitId: string) => {
@@ -116,12 +140,12 @@ export default function TodayScreen() {
     if (!newTaskName.trim()) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await createDailyTask(newTaskName.trim());
+      await createDailyTask(newTaskName.trim(), selectedDateStr);
       setNewTaskName('');
     } catch (error) {
       Alert.alert('Error', 'Failed to create task');
     }
-  }, [newTaskName, createDailyTask]);
+  }, [newTaskName, createDailyTask, selectedDateStr]);
 
   const handleAddHabit = useCallback(
     async (habit: Parameters<typeof createHabit>[0] & { weekly_target?: number }) => {
@@ -206,11 +230,29 @@ export default function TodayScreen() {
           />
         }
       >
-        {/* Date Header */}
-        <View style={styles.dateHeader}>
-          <Text style={[styles.dateText, { color: colors.text }]}>
-            {formatDisplayDate(today)}
-          </Text>
+        {/* Date Header with Navigation */}
+        <View style={[styles.dateNav, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={goToPreviousDay} style={styles.navButton}>
+            <Ionicons name="chevron-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={goToToday} style={styles.dateInfo}>
+            <Text style={[styles.dateText, { color: colors.text }]}>
+              {formatDisplayDate(selectedDate)}
+            </Text>
+            {isSelectedToday && (
+              <View style={[styles.todayBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.todayBadgeText}>Today</Text>
+              </View>
+            )}
+            {!isSelectedToday && (
+              <Text style={[styles.tapToReturn, { color: colors.textTertiary }]}>
+                Tap to return to today
+              </Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={goToNextDay} style={styles.navButton}>
+            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Weekly Planning Prompt */}
@@ -258,7 +300,7 @@ export default function TodayScreen() {
         {dailyTasks.length === 0 ? (
           <View style={styles.emptyTasks}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              No tasks for today
+              No tasks for {isSelectedToday ? 'today' : 'this day'}
             </Text>
           </View>
         ) : (
@@ -372,15 +414,44 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     paddingTop: 8,
   },
-  dateHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+  dateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    marginBottom: 8,
+  },
+  navButton: {
+    padding: 8,
+  },
+  dateInfo: {
+    alignItems: 'center',
+    flex: 1,
   },
   dateText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  todayBadge: {
+    marginTop: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  todayBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tapToReturn: {
+    fontSize: 11,
+    marginTop: 4,
   },
   planningBanner: {
     flexDirection: 'row',
