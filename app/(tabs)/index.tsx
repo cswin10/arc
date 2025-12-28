@@ -15,10 +15,11 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { useHabits } from '../../hooks/useHabits';
-import { useDailyTasks } from '../../hooks/useGoals';
+import { useDailyTasks, useWeeklyGoals } from '../../hooks/useGoals';
 import { SwipeableHabit } from '../../components/SwipeableHabit';
 import { TaskItem } from '../../components/TaskItem';
 import { WeeklyHabitCard } from '../../components/WeeklyHabitCard';
+import { GoalCard } from '../../components/GoalCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddHabitModal } from '../../components/AddHabitModal';
@@ -51,6 +52,13 @@ export default function TodayScreen() {
     updatePriority,
   } = useDailyTasks();
 
+  const {
+    weeklyGoals,
+    refresh: refreshWeeklyGoals,
+    setSelectedWeek,
+    incrementWeeklyGoal,
+  } = useWeeklyGoals();
+
   const [refreshing, setRefreshing] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
@@ -68,17 +76,30 @@ export default function TodayScreen() {
     habitName: string;
     currentDayAmount: number;
   }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
+  const [goalAmountModal, setGoalAmountModal] = useState<{
+    visible: boolean;
+    goalId: string;
+    goalName: string;
+    current: number;
+  }>({ visible: false, goalId: '', goalName: '', current: 0 });
 
   const today = getToday();
   const todayStr = getTodayString();
   const selectedDateStr = formatDate(selectedDate);
   const isSelectedToday = isToday(selectedDate);
   const weekStart = formatDate(getWeekStart());
+  const selectedWeekStart = formatDate(getWeekStart(selectedDate));
 
   // Refresh tasks when selected date changes
   useEffect(() => {
     refreshTasks(selectedDateStr);
   }, [selectedDateStr, refreshTasks]);
+
+  // Refresh weekly goals when selected week changes
+  useEffect(() => {
+    setSelectedWeek(selectedWeekStart);
+    refreshWeeklyGoals(selectedWeekStart);
+  }, [selectedWeekStart, setSelectedWeek, refreshWeeklyGoals]);
 
   const goToPreviousDay = () => {
     Haptics.selectionAsync();
@@ -100,9 +121,13 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshHabits(), refreshTasks(selectedDateStr)]);
+    await Promise.all([
+      refreshHabits(),
+      refreshTasks(selectedDateStr),
+      refreshWeeklyGoals(selectedWeekStart),
+    ]);
     setRefreshing(false);
-  }, [refreshHabits, refreshTasks, selectedDateStr]);
+  }, [refreshHabits, refreshTasks, refreshWeeklyGoals, selectedDateStr, selectedWeekStart]);
 
   const handleSwipeRight = useCallback(
     async (habitId: string) => {
@@ -213,6 +238,22 @@ export default function TodayScreen() {
     setHabitType(type);
     setShowAddHabit(true);
   };
+
+  const handleOpenGoalAmountModal = useCallback((goal: typeof weeklyGoals[0]) => {
+    setGoalAmountModal({
+      visible: true,
+      goalId: goal.id,
+      goalName: goal.name,
+      current: goal.current,
+    });
+  }, []);
+
+  const handleIncrementGoal = useCallback(
+    async (amount: number) => {
+      await incrementWeeklyGoal(goalAmountModal.goalId, amount);
+    },
+    [incrementWeeklyGoal, goalAmountModal.goalId]
+  );
 
   // Filter habits that have started by the selected date
   const visibleDailyHabits = dailyHabits.filter(
@@ -362,7 +403,7 @@ export default function TodayScreen() {
         )}
 
         {/* Weekly Habits Section */}
-        <SectionHeader title="Weekly" onAdd={() => openAddHabitModal('weekly')} />
+        <SectionHeader title="Weekly Habits" onAdd={() => openAddHabitModal('weekly')} />
         {weeklyHabits.length === 0 ? (
           <EmptyState
             icon="calendar-outline"
@@ -380,6 +421,24 @@ export default function TodayScreen() {
               onIncrement={() => handleOpenAmountModal(habit.id)}
             />
           ))
+        )}
+
+        {/* Weekly Goals Section */}
+        {weeklyGoals.length > 0 && (
+          <>
+            <SectionHeader title="Weekly Goals" />
+            {weeklyGoals.map((goal) => (
+              <GoalCard
+                key={goal.id}
+                name={goal.name}
+                current={goal.current}
+                target={goal.target}
+                isRecurring={goal.is_recurring}
+                onPress={() => router.push(`/goal/${goal.id}?type=weekly`)}
+                onIncrement={selectedWeekStart === weekStart ? () => handleOpenGoalAmountModal(goal) : undefined}
+              />
+            ))}
+          </>
         )}
 
         <View style={styles.bottomPadding} />
@@ -406,6 +465,14 @@ export default function TodayScreen() {
         currentDayAmount={amountModal.currentDayAmount}
         onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
         onSubmit={handleLogAmount}
+      />
+
+      <AmountInputModal
+        visible={goalAmountModal.visible}
+        habitName={goalAmountModal.goalName}
+        currentDayAmount={goalAmountModal.current}
+        onClose={() => setGoalAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleIncrementGoal}
       />
     </View>
   );
