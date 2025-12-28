@@ -57,18 +57,18 @@ export default function YearlyScreen() {
     setRefreshing(false);
   }, [refreshGoals]);
 
-  const goToPreviousYear = async () => {
-    await Haptics.selectionAsync();
+  const goToPreviousYear = () => {
+    Haptics.selectionAsync();
     setCurrentYear((prev) => prev - 1);
   };
 
-  const goToNextYear = async () => {
-    await Haptics.selectionAsync();
+  const goToNextYear = () => {
+    Haptics.selectionAsync();
     setCurrentYear((prev) => prev + 1);
   };
 
-  const goToThisYear = async () => {
-    await Haptics.selectionAsync();
+  const goToThisYear = () => {
+    Haptics.selectionAsync();
     setCurrentYear(getToday().getFullYear());
   };
 

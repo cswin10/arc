@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
+import { ConfirmationModal } from './ConfirmationModal';
 import type { DailyTask } from '../types/database';
 
 interface TaskItemProps {
@@ -26,6 +27,7 @@ const getPriorityLabel = (priority: number) => {
 
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange }) => {
   const { colors, isDark } = useTheme();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const priority = task.priority ?? 5;
   const priorityColor = getPriorityColor(priority, colors);
 
@@ -34,8 +36,13 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
     onToggle(task.id, !task.completed);
   };
 
-  const handleDelete = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const handleDeletePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowDeleteConfirm(false);
     onDelete(task.id);
   };
 
@@ -114,10 +121,21 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
           styles.deleteButton,
           { backgroundColor: isDark ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255, 23, 68, 0.08)' },
         ]}
-        onPress={handleDelete}
+        onPress={handleDeletePress}
       >
         <Ionicons name="trash-outline" size={16} color={colors.error} />
       </TouchableOpacity>
+
+      <ConfirmationModal
+        visible={showDeleteConfirm}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${task.name}"?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        icon="trash-outline"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </View>
   );
 };
