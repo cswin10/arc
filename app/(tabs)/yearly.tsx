@@ -110,6 +110,7 @@ export default function YearlyScreen() {
   );
 
   const toggleCategory = (categoryId: string) => {
+    Haptics.selectionAsync();
     setExpandedCategories(prev => {
       const next = new Set(prev);
       if (next.has(categoryId)) {
@@ -183,7 +184,10 @@ export default function YearlyScreen() {
         {/* Add Goal Button */}
         <TouchableOpacity
           style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={() => setShowAddGoal(true)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowAddGoal(true);
+          }}
         >
           <Ionicons name="add" size={20} color="#fff" />
           <Text style={styles.addButtonText}>Add Yearly Goal</Text>
