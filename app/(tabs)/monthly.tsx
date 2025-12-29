@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useMonthlyGoals } from '../../hooks/useGoals';
 import { GoalCard } from '../../components/GoalCard';
@@ -59,19 +60,22 @@ export default function MonthlyScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshGoals();
+    await refreshGoals(formatDate(currentMonth));
     setRefreshing(false);
-  }, [refreshGoals]);
+  }, [refreshGoals, currentMonth]);
 
   const goToPreviousMonth = () => {
+    Haptics.selectionAsync();
     setCurrentMonth(getPreviousMonth(currentMonth));
   };
 
   const goToNextMonth = () => {
+    Haptics.selectionAsync();
     setCurrentMonth(getNextMonth(currentMonth));
   };
 
   const goToThisMonth = () => {
+    Haptics.selectionAsync();
     setCurrentMonth(getMonthStart());
   };
 
@@ -92,6 +96,7 @@ export default function MonthlyScreen() {
   );
 
   const handleOpenAmountModal = useCallback((goal: typeof monthlyGoals[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setAmountModal({
       visible: true,
       goalId: goal.id,

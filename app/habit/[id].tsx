@@ -58,12 +58,14 @@ export default function HabitDetailScreen() {
 
   const handleSaveEdit = async () => {
     if (!habit || !editName.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await updateHabit(habit.id, { name: editName.trim(), start_date: editStartDate, category: editCategory });
     setHabit({ ...habit, name: editName.trim(), start_date: editStartDate, category: editCategory });
     setIsEditing(false);
   };
 
   const handleArchive = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert('Archive Habit', 'This habit will be moved to your archive. You can restore it later.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -71,6 +73,7 @@ export default function HabitDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           if (habit) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             await archiveHabit(habit.id);
             router.back();
           }
@@ -80,6 +83,7 @@ export default function HabitDetailScreen() {
   };
 
   const handleDelete = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       'Delete Habit',
       'This will permanently delete this habit and all its logs. This action cannot be undone.',
@@ -90,6 +94,7 @@ export default function HabitDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             if (habit) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
               await deleteHabit(habit.id);
               router.back();
             }
@@ -101,6 +106,7 @@ export default function HabitDetailScreen() {
 
   const toggleFreezeForDate = async (date: string) => {
     if (!habit) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const hasFreezeOnDate = hasFreezeForDate(date);
     if (hasFreezeOnDate) {
       await removeStreakFreeze(habit.id, date);
@@ -112,6 +118,7 @@ export default function HabitDetailScreen() {
 
   const toggleLogForDate = async (date: string, currentStatus: boolean | undefined) => {
     if (!habit) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (currentStatus === undefined) {
       // Not logged -> logged as completed
@@ -175,7 +182,10 @@ export default function HabitDetailScreen() {
         options={{
           title: isEditing ? 'Edit Habit' : habit.name,
           headerRight: () => (
-            <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
+            <TouchableOpacity onPress={() => {
+              Haptics.selectionAsync();
+              setIsEditing(!isEditing);
+            }}>
               <Text style={{ color: colors.primary, fontSize: 16 }}>
                 {isEditing ? 'Cancel' : 'Edit'}
               </Text>
