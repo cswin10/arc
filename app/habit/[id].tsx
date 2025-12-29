@@ -8,17 +8,16 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useHabits } from '../../hooks/useHabits';
 import { ProgressBar } from '../../components/ProgressBar';
-import { calculateStreak, calculateCompletionRate, formatDate, getToday } from '../../lib/utils';
-import { format, parseISO } from 'date-fns';
+import { DatePickerModal } from '../../components/DatePickerModal';
+import { calculateStreak, calculateCompletionRate, formatDate, getToday, formatShortDate } from '../../lib/utils';
+import { format } from 'date-fns';
 import { LIFE_CATEGORIES, getCategoryConfig } from '../../constants/categories';
 import type { Habit, HabitLog, StreakFreeze, LifeCategory } from '../../types/database';
 
@@ -33,7 +32,7 @@ export default function HabitDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editStartDate, setEditStartDate] = useState(new Date());
+  const [editStartDate, setEditStartDate] = useState(formatDate(new Date()));
   const [editCategory, setEditCategory] = useState<LifeCategory>('other');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -47,7 +46,7 @@ export default function HabitDetailScreen() {
       setLogs(data.logs);
       setFreezes(data.freezes);
       setEditName(data.habit.name);
-      setEditStartDate(parseISO(data.habit.start_date));
+      setEditStartDate(data.habit.start_date);
       setEditCategory(data.habit.category || 'other');
     }
     setIsLoading(false);
@@ -59,19 +58,9 @@ export default function HabitDetailScreen() {
 
   const handleSaveEdit = async () => {
     if (!habit || !editName.trim()) return;
-    const newStartDate = formatDate(editStartDate);
-    await updateHabit(habit.id, { name: editName.trim(), start_date: newStartDate, category: editCategory });
-    setHabit({ ...habit, name: editName.trim(), start_date: newStartDate, category: editCategory });
+    await updateHabit(habit.id, { name: editName.trim(), start_date: editStartDate, category: editCategory });
+    setHabit({ ...habit, name: editName.trim(), start_date: editStartDate, category: editCategory });
     setIsEditing(false);
-  };
-
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (selectedDate) {
-      setEditStartDate(selectedDate);
-    }
   };
 
   const handleArchive = () => {
@@ -225,28 +214,17 @@ export default function HabitDetailScreen() {
             >
               <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
               <Text style={[styles.dateButtonText, { color: colors.text }]}>
-                {format(editStartDate, 'd MMMM yyyy')}
+                {formatShortDate(editStartDate)}
               </Text>
             </TouchableOpacity>
 
-            {showDatePicker && (
-              <DateTimePicker
-                value={editStartDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-                maximumDate={new Date()}
-              />
-            )}
-
-            {Platform.OS === 'ios' && showDatePicker && (
-              <TouchableOpacity
-                style={[styles.doneButton, { backgroundColor: colors.primary }]}
-                onPress={() => setShowDatePicker(false)}
-              >
-                <Text style={styles.doneButtonText}>Done</Text>
-              </TouchableOpacity>
-            )}
+            <DatePickerModal
+              visible={showDatePicker}
+              onClose={() => setShowDatePicker(false)}
+              onSelect={setEditStartDate}
+              selectedDate={editStartDate}
+              title="Start Date"
+            />
 
             <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Life Category</Text>
             <TouchableOpacity
@@ -506,18 +484,6 @@ const styles = StyleSheet.create({
   },
   dateButtonText: {
     fontSize: 16,
-  },
-  doneButton: {
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  doneButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   categoryEmoji: {
     fontSize: 18,
