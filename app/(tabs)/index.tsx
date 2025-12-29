@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import { AddHabitModal } from '../../components/AddHabitModal';
 import { AmountInputModal } from '../../components/AmountInputModal';
 import { formatDisplayDate, getToday, getTodayString, formatDate, getWeekStart, isSunday } from '../../lib/utils';
 import { addDays, subDays, isToday } from 'date-fns';
+import * as db from '../../lib/database';
+import type { HabitLog, StreakFreeze } from '../../types/database';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
@@ -59,6 +61,8 @@ export default function TodayScreen() {
   const [newTaskName, setNewTaskName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getToday());
+  const [selectedDateLogs, setSelectedDateLogs] = useState<HabitLog[]>([]);
+  const [selectedDateFreezes, setSelectedDateFreezes] = useState<StreakFreeze[]>([]);
   const [goalAmountModal, setGoalAmountModal] = useState<{
     visible: boolean;
     goalId: string;
@@ -77,6 +81,11 @@ export default function TodayScreen() {
   useEffect(() => {
     refreshTasks(selectedDateStr);
   }, [selectedDateStr, refreshTasks]);
+
+  // Fetch habit logs and freezes for the selected date
+  useEffect(() => {
+    fetchSelectedDateData();
+  }, [fetchSelectedDateData]);
 
   // Refresh weekly goals when selected week changes
   useEffect(() => {
@@ -102,46 +111,70 @@ export default function TodayScreen() {
   // Show weekly planning prompt on Sundays
   const showWeeklyPrompt = isSunday();
 
+  const fetchSelectedDateData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [logs, freezes] = await Promise.all([
+        db.getHabitLogsForDate(user.id, selectedDateStr),
+        db.getStreakFreezesForDate(user.id, selectedDateStr),
+      ]);
+      setSelectedDateLogs(logs);
+      setSelectedDateFreezes(freezes);
+    } catch (error) {
+      console.error('Failed to fetch habit data for selected date:', error);
+    }
+  }, [user, selectedDateStr]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       refreshHabits(),
       refreshTasks(selectedDateStr),
       refreshWeeklyGoals(selectedWeekStart),
+      fetchSelectedDateData(),
     ]);
     setRefreshing(false);
-  }, [refreshHabits, refreshTasks, refreshWeeklyGoals, selectedDateStr, selectedWeekStart]);
+  }, [refreshHabits, refreshTasks, refreshWeeklyGoals, selectedDateStr, selectedWeekStart, fetchSelectedDateData]);
 
   const handleSwipeRight = useCallback(
     async (habitId: string) => {
-      await logHabit(habitId, todayStr, true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await logHabit(habitId, selectedDateStr, true);
+      await fetchSelectedDateData();
     },
-    [logHabit, todayStr]
+    [logHabit, selectedDateStr, fetchSelectedDateData]
   );
 
   const handleSwipeLeft = useCallback(
     async (habitId: string) => {
-      await logHabit(habitId, todayStr, false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await logHabit(habitId, selectedDateStr, false);
+      await fetchSelectedDateData();
     },
-    [logHabit, todayStr]
+    [logHabit, selectedDateStr, fetchSelectedDateData]
   );
 
   const handleHabitPress = useCallback((habitId: string) => {
+    Haptics.selectionAsync();
     router.push(`/habit/${habitId}`);
   }, []);
 
   const handleFreezeHabit = useCallback(
     async (habitId: string) => {
-      await addStreakFreeze(habitId, todayStr);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await addStreakFreeze(habitId, selectedDateStr);
+      await fetchSelectedDateData();
     },
-    [addStreakFreeze, todayStr]
+    [addStreakFreeze, selectedDateStr, fetchSelectedDateData]
   );
 
   const handleUnfreezeHabit = useCallback(
     async (habitId: string) => {
-      await removeStreakFreeze(habitId, todayStr);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await removeStreakFreeze(habitId, selectedDateStr);
+      await fetchSelectedDateData();
     },
-    [removeStreakFreeze, todayStr]
+    [removeStreakFreeze, selectedDateStr, fetchSelectedDateData]
   );
 
   const handleAddTask = useCallback(async () => {
@@ -324,17 +357,24 @@ export default function TodayScreen() {
             onAction={() => setShowAddHabit(true)}
           />
         ) : (
-          visibleDailyHabits.map((habit) => (
-            <SwipeableHabit
-              key={habit.id}
-              habit={habit}
-              onSwipeRight={handleSwipeRight}
-              onSwipeLeft={handleSwipeLeft}
-              onPress={handleHabitPress}
-              onFreeze={handleFreezeHabit}
-              onUnfreeze={handleUnfreezeHabit}
-            />
-          ))
+          visibleDailyHabits.map((habit) => {
+            const habitLog = selectedDateLogs.find((l) => l.habit_id === habit.id);
+            const habitFrozen = selectedDateFreezes.some((f) => f.habit_id === habit.id);
+            return (
+              <SwipeableHabit
+                key={habit.id}
+                habit={habit}
+                onSwipeRight={handleSwipeRight}
+                onSwipeLeft={handleSwipeLeft}
+                onPress={handleHabitPress}
+                onFreeze={handleFreezeHabit}
+                onUnfreeze={handleUnfreezeHabit}
+                selectedDate={selectedDateStr}
+                selectedDateLog={habitLog ? { completed: habitLog.completed } : undefined}
+                isSelectedDateFrozen={habitFrozen}
+              />
+            );
+          })
         )}
 
         {/* Weekly Goals Section */}

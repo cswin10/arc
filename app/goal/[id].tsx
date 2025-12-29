@@ -81,6 +81,7 @@ export default function GoalDetailScreen() {
   }, [type, id, getLinkedItems]);
 
   const handleEditPress = () => {
+    Haptics.selectionAsync();
     Keyboard.dismiss();
     setTimeout(() => {
       setIsEditing(!isEditing);
@@ -314,7 +315,10 @@ export default function GoalDetailScreen() {
                       <TouchableOpacity
                         key={habit.id}
                         style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
-                        onPress={() => router.push(`/habit/${habit.id}`)}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          router.push(`/habit/${habit.id}`);
+                        }}
                       >
                         <Ionicons
                           name={habit.type === 'daily' ? 'today-outline' : 'repeat-outline'}
@@ -330,28 +334,36 @@ export default function GoalDetailScreen() {
                       </TouchableOpacity>
                     ))}
                     {linkedItems.weeklyGoals.map((g) => (
-                      <View
+                      <TouchableOpacity
                         key={g.id}
                         style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          router.push(`/goal/${g.id}?type=weekly`);
+                        }}
                       >
                         <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                         <Text style={[styles.linkedItemText, { color: colors.text }]}>{g.name}</Text>
                         <Text style={[styles.linkedItemType, { color: colors.textTertiary }]}>
                           weekly goal
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                     {linkedItems.monthlyGoals.map((g) => (
-                      <View
+                      <TouchableOpacity
                         key={g.id}
                         style={[styles.linkedItem, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          router.push(`/goal/${g.id}?type=monthly`);
+                        }}
                       >
                         <Ionicons name="calendar" size={18} color={colors.textSecondary} />
                         <Text style={[styles.linkedItemText, { color: colors.text }]}>{g.name}</Text>
                         <Text style={[styles.linkedItemType, { color: colors.textTertiary }]}>
                           monthly goal
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </>
                 )}
