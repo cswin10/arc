@@ -97,14 +97,14 @@ export const useHabitStore = create<HabitState>((set, get) => ({
         })
       );
 
-      // Sort: habits without today's log first, then by order
+      // Sort: habits without today's log first, then alphabetically by name
       const sortedDailyHabits = dailyHabitsWithStats.sort((a, b) => {
         const aHasLog = a.todayLog !== undefined;
         const bHasLog = b.todayLog !== undefined;
         if (aHasLog !== bHasLog) {
           return aHasLog ? 1 : -1;
         }
-        return a.order - b.order;
+        return a.name.localeCompare(b.name);
       });
 
       set({

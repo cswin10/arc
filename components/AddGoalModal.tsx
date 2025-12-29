@@ -201,7 +201,10 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                             borderColor: isSelected ? category.color : colors.cardBorder,
                           },
                         ]}
-                        onPress={() => setSelectedCategory(category.id)}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setSelectedCategory(category.id);
+                        }}
                       >
                         <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                         <Text

@@ -13,6 +13,9 @@ interface SwipeableHabitProps {
   onPress?: (habitId: string) => void;
   onFreeze?: (habitId: string) => void;
   onUnfreeze?: (habitId: string) => void;
+  selectedDate?: string; // If provided, show log status for this date instead of today
+  selectedDateLog?: { completed: boolean } | undefined; // Log for the selected date
+  isSelectedDateFrozen?: boolean; // Whether the selected date is frozen
 }
 
 export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
@@ -22,13 +25,20 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   onPress,
   onFreeze,
   onUnfreeze,
+  selectedDate,
+  selectedDateLog,
+  isSelectedDateFrozen,
 }) => {
   const { colors, isDark } = useTheme();
 
-  const isCompleted = habit.todayLog?.completed === true;
-  const isNotCompleted = habit.todayLog?.completed === false;
-  const hasLog = habit.todayLog !== undefined;
-  const isFrozen = habit.isTodayFrozen === true;
+  // Use selected date log if provided, otherwise fall back to today's log
+  const activeLog = selectedDate !== undefined ? selectedDateLog : habit.todayLog;
+  const activeFrozen = selectedDate !== undefined ? isSelectedDateFrozen : habit.isTodayFrozen;
+
+  const isCompleted = activeLog?.completed === true;
+  const isNotCompleted = activeLog?.completed === false;
+  const hasLog = activeLog !== undefined;
+  const isFrozen = activeFrozen === true;
   const categoryConfig = getCategoryConfig(habit.category);
 
   const handleFreeze = () => {

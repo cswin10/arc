@@ -266,6 +266,17 @@ export const getStreakFreezes = async (habitId: string): Promise<StreakFreeze[]>
   return data || [];
 };
 
+export const getStreakFreezesForDate = async (userId: string, date: string): Promise<StreakFreeze[]> => {
+  const { data, error } = await supabase
+    .from('streak_freezes')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date);
+
+  if (error) throw error;
+  return data || [];
+};
+
 export const addStreakFreeze = async (
   habitId: string,
   userId: string,

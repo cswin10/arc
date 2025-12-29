@@ -10,15 +10,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
-import { useHabits } from '../../hooks/useHabits';
 import { useWeeklyGoals } from '../../hooks/useGoals';
 import { GoalCard } from '../../components/GoalCard';
-import { WeeklyHabitCard } from '../../components/WeeklyHabitCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
-import { CompletionPopup } from '../../components/CompletionPopup';
 import { AmountInputModal } from '../../components/AmountInputModal';
 import {
   formatDate,
@@ -26,16 +24,12 @@ import {
   getWeekStart,
   getPreviousWeek,
   getNextWeek,
-  getToday,
-  getTodayString,
 } from '../../lib/utils';
 
 export default function WeeklyScreen() {
   const { colors } = useTheme();
-  const { weeklyHabits, refresh: refreshHabits, logHabit } = useHabits();
   const {
     weeklyGoals,
-    selectedWeekStart,
     isLoading,
     refresh: refreshGoals,
     createWeeklyGoal,
@@ -46,18 +40,6 @@ export default function WeeklyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart());
-  const [completionPopup, setCompletionPopup] = useState<{
-    visible: boolean;
-    habitName: string;
-    current: number;
-    target: number;
-  }>({ visible: false, habitName: '', current: 0, target: 0 });
-  const [amountModal, setAmountModal] = useState<{
-    visible: boolean;
-    habitId: string;
-    habitName: string;
-    currentDayAmount: number;
-  }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
   const [goalAmountModal, setGoalAmountModal] = useState<{
     visible: boolean;
     goalId: string;
@@ -73,65 +55,29 @@ export default function WeeklyScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshHabits(), refreshGoals()]);
+    await refreshGoals();
     setRefreshing(false);
-  }, [refreshHabits, refreshGoals]);
+  }, [refreshGoals]);
 
   const goToPreviousWeek = () => {
+    Haptics.selectionAsync();
     setCurrentWeekStart(getPreviousWeek(currentWeekStart));
   };
 
   const goToNextWeek = () => {
+    Haptics.selectionAsync();
     setCurrentWeekStart(getNextWeek(currentWeekStart));
   };
 
   const goToThisWeek = () => {
+    Haptics.selectionAsync();
     setCurrentWeekStart(getWeekStart());
   };
-
-  const handleOpenAmountModal = useCallback(
-    (habitId: string) => {
-      const habit = weeklyHabits.find((h) => h.id === habitId);
-      if (!habit) return;
-
-      // Get today's logged amount
-      const today = getTodayString();
-      const todayLog = habit.logs?.find((l) => l.date === today);
-      const currentDayAmount = todayLog?.amount || 0;
-
-      setAmountModal({
-        visible: true,
-        habitId,
-        habitName: habit.name,
-        currentDayAmount,
-      });
-    },
-    [weeklyHabits]
-  );
-
-  const handleLogAmount = useCallback(
-    async (amount: number) => {
-      const habit = weeklyHabits.find((h) => h.id === amountModal.habitId);
-      if (!habit) return;
-
-      await logHabit(amountModal.habitId, getTodayString(), true, amount);
-
-      // Show completion popup with updated progress
-      const target = habit.weeklyTarget?.target || 0;
-      const newCurrent = habit.currentProgress + amount;
-      setCompletionPopup({
-        visible: true,
-        habitName: habit.name,
-        current: newCurrent,
-        target: target,
-      });
-    },
-    [logHabit, weeklyHabits, amountModal.habitId]
-  );
 
   const handleCreateGoal = useCallback(
     async (goal: Parameters<typeof createWeeklyGoal>[0]) => {
       try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         await createWeeklyGoal({
           ...goal,
           week_start: formatDate(currentWeekStart),
@@ -146,6 +92,7 @@ export default function WeeklyScreen() {
   );
 
   const handleOpenGoalAmountModal = useCallback((goal: typeof weeklyGoals[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setGoalAmountModal({
       visible: true,
       goalId: goal.id,
@@ -156,6 +103,7 @@ export default function WeeklyScreen() {
 
   const handleIncrementGoal = useCallback(
     async (amount: number) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await incrementWeeklyGoal(goalAmountModal.goalId, amount);
     },
     [incrementWeeklyGoal, goalAmountModal.goalId]
@@ -195,39 +143,6 @@ export default function WeeklyScreen() {
           />
         }
       >
-        {/* Weekly Planning Banner */}
-        <TouchableOpacity
-          style={[styles.planBanner, { backgroundColor: colors.backgroundSecondary }]}
-          onPress={() => router.push('/plan-week')}
-        >
-          <View style={styles.planBannerContent}>
-            <Ionicons name="create-outline" size={20} color={colors.primary} />
-            <Text style={[styles.planBannerText, { color: colors.text }]}>
-              Plan & adjust your weekly targets
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-        </TouchableOpacity>
-
-        {/* Weekly Habits Section */}
-        <SectionHeader title="Weekly Habits" />
-        {weeklyHabits.length === 0 ? (
-          <EmptyState
-            icon="repeat-outline"
-            title="No weekly habits"
-            message="Add habits you want to track multiple times per week"
-          />
-        ) : (
-          weeklyHabits.map((habit) => (
-            <WeeklyHabitCard
-              key={habit.id}
-              habit={habit}
-              onPress={() => router.push(`/habit/${habit.id}`)}
-              onIncrement={isThisWeek ? () => handleOpenAmountModal(habit.id) : undefined}
-            />
-          ))
-        )}
-
         {/* Weekly Goals Section */}
         <SectionHeader title="Weekly Goals" onAdd={() => setShowAddGoal(true)} />
         {weeklyGoals.length === 0 ? (
@@ -261,22 +176,6 @@ export default function WeeklyScreen() {
         onSubmit={handleCreateGoal}
         type="weekly"
         period={formatDate(currentWeekStart)}
-      />
-
-      <CompletionPopup
-        visible={completionPopup.visible}
-        habitName={completionPopup.habitName}
-        current={completionPopup.current}
-        target={completionPopup.target}
-        onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
-      />
-
-      <AmountInputModal
-        visible={amountModal.visible}
-        habitName={amountModal.habitName}
-        currentDayAmount={amountModal.currentDayAmount}
-        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
-        onSubmit={handleLogAmount}
       />
 
       <AmountInputModal
@@ -325,24 +224,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-  },
-  planBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 12,
-  },
-  planBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  planBannerText: {
-    fontSize: 15,
-    fontWeight: '500',
+    paddingTop: 16,
   },
   bottomPadding: {
     height: 24,
