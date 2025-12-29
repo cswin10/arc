@@ -217,12 +217,8 @@ export const useYearlyGoals = () => {
     }
   }, [user, fetchAllYearlyGoals]);
 
-  useEffect(() => {
-    if (user) {
-      fetchYearlyGoals(user.id);
-      fetchAllYearlyGoals(user.id);
-    }
-  }, [user, fetchYearlyGoals, fetchAllYearlyGoals]);
+  // Don't auto-fetch on mount - let components control when to fetch
+  // This prevents blocking UI during navigation
 
   return {
     yearlyGoals,

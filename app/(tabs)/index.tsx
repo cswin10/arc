@@ -18,27 +18,23 @@ import { useHabits } from '../../hooks/useHabits';
 import { useDailyTasks, useWeeklyGoals } from '../../hooks/useGoals';
 import { SwipeableHabit } from '../../components/SwipeableHabit';
 import { TaskItem } from '../../components/TaskItem';
-import { WeeklyHabitCard } from '../../components/WeeklyHabitCard';
 import { GoalCard } from '../../components/GoalCard';
 import { SectionHeader } from '../../components/SectionHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { AddHabitModal } from '../../components/AddHabitModal';
-import { CompletionPopup } from '../../components/CompletionPopup';
 import { AmountInputModal } from '../../components/AmountInputModal';
 import { formatDisplayDate, getToday, getTodayString, formatDate, getWeekStart, isSunday } from '../../lib/utils';
-import { addDays, subDays, isToday, isSameDay } from 'date-fns';
+import { addDays, subDays, isToday } from 'date-fns';
 
 export default function TodayScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
   const {
     dailyHabits,
-    weeklyHabits,
     isLoading: habitsLoading,
     refresh: refreshHabits,
     createHabit,
     logHabit,
-    setWeeklyTarget,
     addStreakFreeze,
     removeStreakFreeze,
   } = useHabits();
@@ -62,20 +58,7 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
-  const [habitType, setHabitType] = useState<'daily' | 'weekly'>('daily');
   const [selectedDate, setSelectedDate] = useState(getToday());
-  const [completionPopup, setCompletionPopup] = useState<{
-    visible: boolean;
-    habitName: string;
-    current: number;
-    target: number;
-  }>({ visible: false, habitName: '', current: 0, target: 0 });
-  const [amountModal, setAmountModal] = useState<{
-    visible: boolean;
-    habitId: string;
-    habitName: string;
-    currentDayAmount: number;
-  }>({ visible: false, habitId: '', habitName: '', currentDayAmount: 0 });
   const [goalAmountModal, setGoalAmountModal] = useState<{
     visible: boolean;
     goalId: string;
@@ -173,71 +156,23 @@ export default function TodayScreen() {
   }, [newTaskName, createDailyTask, selectedDateStr]);
 
   const handleAddHabit = useCallback(
-    async (habit: Parameters<typeof createHabit>[0] & { weekly_target?: number }) => {
+    async (habit: Parameters<typeof createHabit>[0] & { category?: string }) => {
       try {
-        const newHabit = await createHabit({
+        await createHabit({
           name: habit.name,
-          type: habit.type,
+          type: 'daily',
           start_date: habit.start_date,
           is_archived: false,
-          order: habit.type === 'daily' ? dailyHabits.length : weeklyHabits.length,
+          order: dailyHabits.length,
           linked_yearly_goal_id: habit.linked_yearly_goal_id,
+          category: habit.category,
         });
-
-        // If weekly habit, set the initial target
-        if (habit.type === 'weekly' && habit.weekly_target) {
-          await setWeeklyTarget(newHabit.id, weekStart, habit.weekly_target);
-        }
       } catch (error) {
         Alert.alert('Error', 'Failed to create habit');
       }
     },
-    [createHabit, dailyHabits.length, weeklyHabits.length, setWeeklyTarget, weekStart]
+    [createHabit, dailyHabits.length]
   );
-
-  const handleOpenAmountModal = useCallback(
-    (habitId: string) => {
-      const habit = weeklyHabits.find((h) => h.id === habitId);
-      if (!habit) return;
-
-      // Get today's logged amount
-      const todayLog = habit.logs?.find((l) => l.date === todayStr);
-      const currentDayAmount = todayLog?.amount || 0;
-
-      setAmountModal({
-        visible: true,
-        habitId,
-        habitName: habit.name,
-        currentDayAmount,
-      });
-    },
-    [weeklyHabits, todayStr]
-  );
-
-  const handleLogAmount = useCallback(
-    async (amount: number) => {
-      const habit = weeklyHabits.find((h) => h.id === amountModal.habitId);
-      if (!habit) return;
-
-      await logHabit(amountModal.habitId, todayStr, true, amount);
-
-      // Show completion popup with updated progress
-      const target = habit.weeklyTarget?.target || 0;
-      const newCurrent = habit.currentProgress + amount;
-      setCompletionPopup({
-        visible: true,
-        habitName: habit.name,
-        current: newCurrent,
-        target: target,
-      });
-    },
-    [logHabit, todayStr, weeklyHabits, amountModal.habitId]
-  );
-
-  const openAddHabitModal = (type: 'daily' | 'weekly') => {
-    setHabitType(type);
-    setShowAddHabit(true);
-  };
 
   const handleOpenGoalAmountModal = useCallback((goal: typeof weeklyGoals[0]) => {
     setGoalAmountModal({
@@ -379,14 +314,14 @@ export default function TodayScreen() {
         )}
 
         {/* Daily Habits Section */}
-        <SectionHeader title="Daily Habits" onAdd={() => openAddHabitModal('daily')} />
+        <SectionHeader title="Daily Habits" onAdd={() => setShowAddHabit(true)} />
         {visibleDailyHabits.length === 0 ? (
           <EmptyState
             icon="fitness-outline"
             title="No daily habits yet"
             message="Swipe right to mark as done, left to skip"
             actionLabel="Add Your First Habit"
-            onAction={() => openAddHabitModal('daily')}
+            onAction={() => setShowAddHabit(true)}
           />
         ) : (
           visibleDailyHabits.map((habit) => (
@@ -398,27 +333,6 @@ export default function TodayScreen() {
               onPress={handleHabitPress}
               onFreeze={handleFreezeHabit}
               onUnfreeze={handleUnfreezeHabit}
-            />
-          ))
-        )}
-
-        {/* Weekly Habits Section */}
-        <SectionHeader title="Weekly Habits" onAdd={() => openAddHabitModal('weekly')} />
-        {weeklyHabits.length === 0 ? (
-          <EmptyState
-            icon="calendar-outline"
-            title="No weekly habits yet"
-            message="Track habits you want to do multiple times per week"
-            actionLabel="Add Weekly Habit"
-            onAction={() => openAddHabitModal('weekly')}
-          />
-        ) : (
-          weeklyHabits.map((habit) => (
-            <WeeklyHabitCard
-              key={habit.id}
-              habit={habit}
-              onPress={() => handleHabitPress(habit.id)}
-              onIncrement={() => handleOpenAmountModal(habit.id)}
             />
           ))
         )}
@@ -448,23 +362,7 @@ export default function TodayScreen() {
         visible={showAddHabit}
         onClose={() => setShowAddHabit(false)}
         onSubmit={handleAddHabit}
-        type={habitType}
-      />
-
-      <CompletionPopup
-        visible={completionPopup.visible}
-        habitName={completionPopup.habitName}
-        current={completionPopup.current}
-        target={completionPopup.target}
-        onHide={() => setCompletionPopup((prev) => ({ ...prev, visible: false }))}
-      />
-
-      <AmountInputModal
-        visible={amountModal.visible}
-        habitName={amountModal.habitName}
-        currentDayAmount={amountModal.currentDayAmount}
-        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
-        onSubmit={handleLogAmount}
+        type="daily"
       />
 
       <AmountInputModal

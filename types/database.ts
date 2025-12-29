@@ -29,6 +29,7 @@ export interface Habit {
   is_archived: boolean;
   order: number;
   linked_yearly_goal_id: string | null;
+  category?: LifeCategory;
 }
 
 export interface HabitLog {
@@ -95,7 +96,7 @@ export interface MonthlyGoal {
   created_at: string;
 }
 
-export type YearlyGoalCategory =
+export type LifeCategory =
   | 'business'
   | 'brand'
   | 'health'
@@ -103,6 +104,9 @@ export type YearlyGoalCategory =
   | 'travel'
   | 'lifestyle'
   | 'other';
+
+// Alias for backward compatibility
+export type YearlyGoalCategory = LifeCategory;
 
 export interface YearlyGoal {
   id: string;

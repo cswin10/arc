@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  InteractionManager,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,11 +46,22 @@ export default function YearlyScreen() {
     current: number;
   }>({ visible: false, goalId: '', goalName: '', current: 0 });
   const isOpeningModal = useRef(false);
+  const [isReady, setIsReady] = useState(false);
+
+  // Defer data fetching until after navigation animation completes
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
 
   useEffect(() => {
-    setSelectedYear(currentYear);
-    refreshGoals(currentYear);
-  }, [currentYear, setSelectedYear, refreshGoals]);
+    if (isReady) {
+      setSelectedYear(currentYear);
+      refreshGoals(currentYear);
+    }
+  }, [currentYear, setSelectedYear, refreshGoals, isReady]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

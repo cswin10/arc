@@ -19,7 +19,7 @@ export const getHabits = async (userId: string, type?: 'daily' | 'weekly'): Prom
     .select('*')
     .eq('user_id', userId)
     .eq('is_archived', false)
-    .order('order', { ascending: true });
+    .order('name', { ascending: true });
 
   if (type) {
     query = query.eq('type', type);

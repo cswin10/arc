@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
+import { getCategoryConfig } from '../constants/categories';
 import type { HabitWithStats } from '../types/database';
 
 interface SwipeableHabitProps {
@@ -28,6 +29,7 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   const isNotCompleted = habit.todayLog?.completed === false;
   const hasLog = habit.todayLog !== undefined;
   const isFrozen = habit.isTodayFrozen === true;
+  const categoryConfig = getCategoryConfig(habit.category);
 
   const handleFreeze = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -76,6 +78,11 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
           </TouchableOpacity>
 
           <View style={styles.habitInfo}>
+            {habit.category && habit.category !== 'other' && (
+              <View style={[styles.categoryBadge, { backgroundColor: categoryConfig.color + '20' }]}>
+                <Text style={styles.categoryEmoji}>{categoryConfig.emoji}</Text>
+              </View>
+            )}
             <Text
               style={[
                 styles.habitName,
@@ -217,7 +224,17 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+  },
+  categoryBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  categoryEmoji: {
+    fontSize: 14,
   },
   habitName: {
     fontSize: 16,
