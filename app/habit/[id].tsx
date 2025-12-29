@@ -8,14 +8,19 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useHabits } from '../../hooks/useHabits';
 import { ProgressBar } from '../../components/ProgressBar';
 import { calculateStreak, calculateCompletionRate, formatDate, getToday } from '../../lib/utils';
-import type { Habit, HabitLog, StreakFreeze } from '../../types/database';
+import { format, parseISO } from 'date-fns';
+import { LIFE_CATEGORIES, getCategoryConfig } from '../../constants/categories';
+import type { Habit, HabitLog, StreakFreeze, LifeCategory } from '../../types/database';
 
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,6 +33,10 @@ export default function HabitDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editStartDate, setEditStartDate] = useState(new Date());
+  const [editCategory, setEditCategory] = useState<LifeCategory>('other');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -38,6 +47,8 @@ export default function HabitDetailScreen() {
       setLogs(data.logs);
       setFreezes(data.freezes);
       setEditName(data.habit.name);
+      setEditStartDate(parseISO(data.habit.start_date));
+      setEditCategory(data.habit.category || 'other');
     }
     setIsLoading(false);
   }, [id, getHabitWithLogs]);
@@ -48,9 +59,19 @@ export default function HabitDetailScreen() {
 
   const handleSaveEdit = async () => {
     if (!habit || !editName.trim()) return;
-    await updateHabit(habit.id, { name: editName.trim() });
-    setHabit({ ...habit, name: editName.trim() });
+    const newStartDate = formatDate(editStartDate);
+    await updateHabit(habit.id, { name: editName.trim(), start_date: newStartDate, category: editCategory });
+    setHabit({ ...habit, name: editName.trim(), start_date: newStartDate, category: editCategory });
     setIsEditing(false);
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setEditStartDate(selectedDate);
+    }
   };
 
   const handleArchive = () => {
@@ -190,8 +211,100 @@ export default function HabitDetailScreen() {
               onChangeText={setEditName}
               autoFocus
             />
+
+            <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Start Date</Text>
             <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.dateButton,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+              <Text style={[styles.dateButtonText, { color: colors.text }]}>
+                {format(editStartDate, 'd MMMM yyyy')}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={editStartDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+
+            {Platform.OS === 'ios' && showDatePicker && (
+              <TouchableOpacity
+                style={[styles.doneButton, { backgroundColor: colors.primary }]}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>Life Category</Text>
+            <TouchableOpacity
+              style={[
+                styles.dateButton,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+            >
+              <Text style={styles.categoryEmoji}>{getCategoryConfig(editCategory).emoji}</Text>
+              <Text style={[styles.dateButtonText, { color: colors.text, flex: 1 }]}>
+                {getCategoryConfig(editCategory).label}
+              </Text>
+              <Ionicons
+                name={showCategoryPicker ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {showCategoryPicker && (
+              <View style={[styles.categoryGrid, { backgroundColor: colors.backgroundSecondary }]}>
+                {LIFE_CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.categoryOption,
+                      {
+                        backgroundColor: editCategory === cat.id ? cat.color + '20' : 'transparent',
+                        borderColor: editCategory === cat.id ? cat.color : colors.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setEditCategory(cat.id);
+                      setShowCategoryPicker(false);
+                    }}
+                  >
+                    <Text style={styles.categoryOptionEmoji}>{cat.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.categoryOptionText,
+                        { color: editCategory === cat.id ? cat.color : colors.text },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: colors.primary, marginTop: 24 }]}
               onPress={handleSaveEdit}
             >
               <Text style={styles.saveButtonText}>Save Changes</Text>
@@ -279,6 +392,15 @@ export default function HabitDetailScreen() {
 
             {/* Info Section */}
             <View style={[styles.infoSection, { backgroundColor: colors.backgroundSecondary }]}>
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Category</Text>
+                <View style={styles.categoryInfoRow}>
+                  <Text style={styles.categoryInfoEmoji}>{getCategoryConfig(habit.category).emoji}</Text>
+                  <Text style={[styles.infoValue, { color: getCategoryConfig(habit.category).color }]}>
+                    {getCategoryConfig(habit.category).label}
+                  </Text>
+                </View>
+              </View>
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Type</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
@@ -373,6 +495,59 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  dateButtonText: {
+    fontSize: 16,
+  },
+  doneButton: {
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  categoryEmoji: {
+    fontSize: 18,
+  },
+  categoryGrid: {
+    marginTop: 8,
+    borderRadius: 12,
+    padding: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+    width: '48%',
+  },
+  categoryOptionEmoji: {
+    fontSize: 16,
+  },
+  categoryOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
   statsContainer: {
     flexDirection: 'row',
     margin: 16,
@@ -464,6 +639,14 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  categoryInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  categoryInfoEmoji: {
+    fontSize: 16,
   },
   archiveButton: {
     flexDirection: 'row',

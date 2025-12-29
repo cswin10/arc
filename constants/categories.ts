@@ -1,10 +1,10 @@
-import type { YearlyGoalCategory } from '../types/database';
+import type { LifeCategory, YearlyGoalCategory } from '../types/database';
 import { Ionicons } from '@expo/vector-icons';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export interface CategoryConfig {
-  id: YearlyGoalCategory;
+  id: LifeCategory;
   label: string;
   emoji: string;
   icon: IconName;
@@ -63,6 +63,10 @@ export const YEARLY_GOAL_CATEGORIES: CategoryConfig[] = [
   },
 ];
 
-export const getCategoryConfig = (categoryId: YearlyGoalCategory): CategoryConfig => {
+export const getCategoryConfig = (categoryId: LifeCategory | undefined): CategoryConfig => {
+  if (!categoryId) return YEARLY_GOAL_CATEGORIES[6]; // Default to 'other'
   return YEARLY_GOAL_CATEGORIES.find((c) => c.id === categoryId) || YEARLY_GOAL_CATEGORIES[6];
 };
+
+// Alias for use with habits
+export const LIFE_CATEGORIES = YEARLY_GOAL_CATEGORIES;

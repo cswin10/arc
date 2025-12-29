@@ -19,7 +19,7 @@ import { useYearlyGoals } from '../hooks/useGoals';
 import { formatDate, getToday, getWeekStart, formatShortDate } from '../lib/utils';
 import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
 import { DatePickerModal } from './DatePickerModal';
-import type { HabitType, YearlyGoal, YearlyGoalCategory } from '../types/database';
+import type { HabitType, YearlyGoal, YearlyGoalCategory, LifeCategory } from '../types/database';
 
 interface AddHabitModalProps {
   visible: boolean;
@@ -31,6 +31,7 @@ interface AddHabitModalProps {
     linked_yearly_goal_id: string | null;
     is_recurring?: boolean;
     weekly_target?: number;
+    category?: LifeCategory;
   }) => void;
   type?: HabitType;
 }
@@ -52,7 +53,9 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
   const [isRecurring, setIsRecurring] = useState(true);
   const [weeklyTarget, setWeeklyTarget] = useState('4');
+  const [category, setCategory] = useState<LifeCategory>('other');
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
 
@@ -90,6 +93,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       linked_yearly_goal_id: linkedGoalId,
       is_recurring: effectiveType === 'weekly' ? isRecurring : undefined,
       weekly_target: effectiveType === 'weekly' ? parseInt(weeklyTarget) : undefined,
+      category,
     });
 
     // Reset form
@@ -99,6 +103,7 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
     setLinkedGoalId(null);
     setIsRecurring(true);
     setWeeklyTarget('4');
+    setCategory('other');
     setError('');
     onClose();
   };
@@ -147,6 +152,64 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 onChangeText={setName}
                 autoFocus
               />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text }]}>Life Category</Text>
+              <TouchableOpacity
+                style={[
+                  styles.pickerButton,
+                  {
+                    backgroundColor: colors.backgroundSecondary,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+              >
+                <View style={styles.pickerContent}>
+                  <Text style={styles.pickerEmoji}>{getCategoryConfig(category).emoji}</Text>
+                  <Text style={[styles.pickerText, { color: colors.text }]}>
+                    {getCategoryConfig(category).label}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={showCategoryPicker ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+              {showCategoryPicker && (
+                <View style={[styles.categoryGrid, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                  {YEARLY_GOAL_CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryOption,
+                        {
+                          backgroundColor: category === cat.id ? cat.color + '20' : colors.backgroundSecondary,
+                          borderColor: category === cat.id ? cat.color : colors.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setCategory(cat.id);
+                        setShowCategoryPicker(false);
+                      }}
+                    >
+                      <Text style={styles.categoryOptionEmoji}>{cat.emoji}</Text>
+                      <Text
+                        style={[
+                          styles.categoryOptionText,
+                          { color: category === cat.id ? cat.color : colors.text },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Only show type toggle if no fixed type is provided */}
@@ -501,5 +564,32 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  categoryGrid: {
+    marginTop: 8,
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+    width: '48%',
+  },
+  categoryOptionEmoji: {
+    fontSize: 16,
+  },
+  categoryOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
 });

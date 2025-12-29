@@ -262,13 +262,14 @@ export const useGoalStore = create<GoalState>((set, get) => ({
   // ==================== Yearly Goals ====================
 
   fetchYearlyGoals: async (userId: string, year?: number) => {
-    set({ isLoading: true, error: null });
+    // Don't set isLoading to avoid blocking UI - use optimistic rendering
+    set({ error: null });
     try {
       const targetYear = year || get().selectedYear;
       const goals = await db.getYearlyGoals(userId, targetYear);
-      set({ yearlyGoals: goals, isLoading: false });
+      set({ yearlyGoals: goals });
     } catch (error) {
-      set({ isLoading: false, error: 'Failed to fetch yearly goals' });
+      set({ error: 'Failed to fetch yearly goals' });
     }
   },
 
