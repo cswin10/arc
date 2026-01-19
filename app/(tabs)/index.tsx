@@ -37,6 +37,7 @@ export default function TodayScreen() {
     refresh: refreshHabits,
     createHabit,
     logHabit,
+    deleteHabitLog,
     addStreakFreeze,
     removeStreakFreeze,
   } = useHabits();
@@ -177,6 +178,15 @@ export default function TodayScreen() {
     [removeStreakFreeze, selectedDateStr, fetchSelectedDateData]
   );
 
+  const handleClearHabitLog = useCallback(
+    async (habitId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await deleteHabitLog(habitId, selectedDateStr);
+      await fetchSelectedDateData();
+    },
+    [deleteHabitLog, selectedDateStr, fetchSelectedDateData]
+  );
+
   const handleAddTask = useCallback(async () => {
     if (!newTaskName.trim()) return;
     try {
@@ -208,6 +218,7 @@ export default function TodayScreen() {
   );
 
   const handleOpenGoalAmountModal = useCallback((goal: typeof weeklyGoals[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setGoalAmountModal({
       visible: true,
       goalId: goal.id,
@@ -215,6 +226,14 @@ export default function TodayScreen() {
       current: goal.current,
     });
   }, []);
+
+  const handleQuickIncrementGoal = useCallback(
+    async (goalId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await incrementWeeklyGoal(goalId, 1);
+    },
+    [incrementWeeklyGoal]
+  );
 
   const handleIncrementGoal = useCallback(
     async (amount: number) => {
@@ -369,6 +388,7 @@ export default function TodayScreen() {
                 onPress={handleHabitPress}
                 onFreeze={handleFreezeHabit}
                 onUnfreeze={handleUnfreezeHabit}
+                onClearLog={handleClearHabitLog}
                 selectedDate={selectedDateStr}
                 selectedDateLog={habitLog ? { completed: habitLog.completed } : undefined}
                 isSelectedDateFrozen={habitFrozen}
@@ -388,8 +408,8 @@ export default function TodayScreen() {
                 current={goal.current}
                 target={goal.target}
                 isRecurring={goal.is_recurring}
-                onPress={() => router.push(`/goal/${goal.id}?type=weekly`)}
-                onIncrement={selectedWeekStart === weekStart ? () => handleOpenGoalAmountModal(goal) : undefined}
+                onPress={selectedWeekStart === weekStart ? () => handleOpenGoalAmountModal(goal) : () => router.push(`/goal/${goal.id}?type=weekly`)}
+                onIncrement={selectedWeekStart === weekStart ? () => handleQuickIncrementGoal(goal.id) : undefined}
               />
             ))}
           </>

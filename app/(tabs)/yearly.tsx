@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
-  InteractionManager,
+  ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,14 +21,13 @@ import { EmptyState } from '../../components/EmptyState';
 import { AddGoalModal } from '../../components/AddGoalModal';
 import { AmountInputModal } from '../../components/AmountInputModal';
 import { getToday } from '../../lib/utils';
-import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../../constants/categories';
+import { YEARLY_GOAL_CATEGORIES } from '../../constants/categories';
 import type { YearlyGoalCategory, YearlyGoal } from '../../types/database';
 
 export default function YearlyScreen() {
   const { colors, isDark } = useTheme();
   const {
     yearlyGoals,
-    selectedYear,
     isLoading,
     refresh: refreshGoals,
     createYearlyGoal,
@@ -38,7 +38,10 @@ export default function YearlyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [currentYear, setCurrentYear] = useState(getToday().getFullYear());
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(YEARLY_GOAL_CATEGORIES.map(c => c.id)));
+  // Start with all categories collapsed for faster initial render
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const [amountModal, setAmountModal] = useState<{
     visible: boolean;
     goalId: string;
@@ -46,43 +49,37 @@ export default function YearlyScreen() {
     current: number;
   }>({ visible: false, goalId: '', goalName: '', current: 0 });
   const isOpeningModal = useRef(false);
-  const [isReady, setIsReady] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Defer data fetching until after navigation animation completes
+  // Load data on mount and year change
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      setIsReady(true);
+    setDataLoaded(false);
+    setSelectedYear(currentYear);
+    refreshGoals(currentYear).then(() => {
+      setDataLoaded(true);
     });
-    return () => task.cancel();
-  }, []);
-
-  useEffect(() => {
-    if (isReady) {
-      setSelectedYear(currentYear);
-      refreshGoals(currentYear);
-    }
-  }, [currentYear, setSelectedYear, refreshGoals, isReady]);
+  }, [currentYear, setSelectedYear, refreshGoals]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshGoals();
+    await refreshGoals(currentYear);
     setRefreshing(false);
-  }, [refreshGoals]);
+  }, [refreshGoals, currentYear]);
 
-  const goToPreviousYear = () => {
+  const goToPreviousYear = useCallback(() => {
     Haptics.selectionAsync();
     setCurrentYear((prev) => prev - 1);
-  };
+  }, []);
 
-  const goToNextYear = () => {
+  const goToNextYear = useCallback(() => {
     Haptics.selectionAsync();
     setCurrentYear((prev) => prev + 1);
-  };
+  }, []);
 
-  const goToThisYear = () => {
+  const goToThisYear = useCallback(() => {
     Haptics.selectionAsync();
     setCurrentYear(getToday().getFullYear());
-  };
+  }, []);
 
   const handleCreateGoal = useCallback(
     async (goal: Parameters<typeof createYearlyGoal>[0]) => {
@@ -103,6 +100,7 @@ export default function YearlyScreen() {
   const handleOpenAmountModal = useCallback((goal: YearlyGoal) => {
     if (isOpeningModal.current) return;
     isOpeningModal.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setAmountModal({
       visible: true,
       goalId: goal.id,
@@ -121,7 +119,7 @@ export default function YearlyScreen() {
     [incrementYearlyGoal, amountModal.goalId]
   );
 
-  const toggleCategory = (categoryId: string) => {
+  const toggleCategory = useCallback((categoryId: string) => {
     Haptics.selectionAsync();
     setExpandedCategories(prev => {
       const next = new Set(prev);
@@ -132,24 +130,49 @@ export default function YearlyScreen() {
       }
       return next;
     });
-  };
+  }, []);
+
+  const toggleSearch = useCallback(() => {
+    Haptics.selectionAsync();
+    setShowSearch(prev => !prev);
+    if (showSearch) {
+      setSearchQuery('');
+    }
+  }, [showSearch]);
 
   const thisYear = getToday().getFullYear();
   const isThisYear = currentYear === thisYear;
 
-  // Group goals by category
-  const goalsByCategory = YEARLY_GOAL_CATEGORIES.reduce((acc, category) => {
-    acc[category.id] = yearlyGoals.filter((g) => (g.category || 'other') === category.id);
-    return acc;
-  }, {} as Record<YearlyGoalCategory, YearlyGoal[]>);
+  // Memoize filtered goals based on search
+  const filteredGoals = useMemo(() => {
+    if (!searchQuery.trim()) return yearlyGoals;
+    const query = searchQuery.toLowerCase();
+    return yearlyGoals.filter(g => g.name.toLowerCase().includes(query));
+  }, [yearlyGoals, searchQuery]);
 
-  // Calculate stats
-  const totalGoals = yearlyGoals.length;
-  const completedGoals = yearlyGoals.filter((g) => g.current >= g.target).length;
+  // Memoize goals grouped by category
+  const goalsByCategory = useMemo(() => {
+    return YEARLY_GOAL_CATEGORIES.reduce((acc, category) => {
+      acc[category.id] = filteredGoals.filter((g) => (g.category || 'other') === category.id);
+      return acc;
+    }, {} as Record<YearlyGoalCategory, YearlyGoal[]>);
+  }, [filteredGoals]);
+
+  // Memoize stats
+  const stats = useMemo(() => {
+    const totalGoals = yearlyGoals.length;
+    const completedGoals = yearlyGoals.filter((g) => g.current >= g.target).length;
+    return { totalGoals, completedGoals };
+  }, [yearlyGoals]);
+
+  // Memoize categories that have goals
+  const categoriesWithGoals = useMemo(() => {
+    return YEARLY_GOAL_CATEGORIES.filter(cat => goalsByCategory[cat.id]?.length > 0);
+  }, [goalsByCategory]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Year Navigation */}
+      {/* Year Navigation - Always responsive */}
       <View style={[styles.yearNav, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={goToPreviousYear} style={styles.navButton}>
           <Ionicons name="chevron-back" size={24} color={colors.primary} />
@@ -167,6 +190,26 @@ export default function YearlyScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
+      {showSearch && (
+        <View style={[styles.searchContainer, { backgroundColor: colors.backgroundSecondary }]}>
+          <Ionicons name="search" size={20} color={colors.textTertiary} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search goals..."
+            placeholderTextColor={colors.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -178,35 +221,57 @@ export default function YearlyScreen() {
         }
       >
         {/* Stats Overview */}
-        {totalGoals > 0 && (
+        {stats.totalGoals > 0 && (
           <View style={[styles.statsContainer, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.text }]}>{totalGoals}</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalGoals}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Goals</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.success }]}>{completedGoals}</Text>
+                <Text style={[styles.statValue, { color: colors.success }]}>{stats.completedGoals}</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Completed</Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* Add Goal Button */}
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowAddGoal(true);
-          }}
-        >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Add Yearly Goal</Text>
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary, flex: 1 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowAddGoal(true);
+            }}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Add Goal</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.searchButton,
+              {
+                backgroundColor: showSearch ? colors.primary : colors.backgroundSecondary,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={toggleSearch}
+          >
+            <Ionicons name="search" size={20} color={showSearch ? '#fff' : colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Loading State */}
+        {!dataLoaded && yearlyGoals.length === 0 && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading goals...</Text>
+          </View>
+        )}
 
         {/* Goals by Category */}
-        {yearlyGoals.length === 0 ? (
+        {dataLoaded && filteredGoals.length === 0 && !searchQuery ? (
           <EmptyState
             icon="trophy-outline"
             title="No yearly goals yet"
@@ -214,11 +279,16 @@ export default function YearlyScreen() {
             actionLabel="Add Yearly Goal"
             onAction={() => setShowAddGoal(true)}
           />
+        ) : dataLoaded && filteredGoals.length === 0 && searchQuery ? (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+            <Text style={[styles.noResultsText, { color: colors.textSecondary }]}>
+              No goals found for "{searchQuery}"
+            </Text>
+          </View>
         ) : (
-          YEARLY_GOAL_CATEGORIES.map((category) => {
+          categoriesWithGoals.map((category) => {
             const categoryGoals = goalsByCategory[category.id];
-            if (categoryGoals.length === 0) return null;
-
             const isExpanded = expandedCategories.has(category.id);
             const categoryCompleted = categoryGoals.filter((g) => g.current >= g.target).length;
             const categoryProgress = categoryGoals.reduce((acc, g) => acc + Math.min(g.current, g.target), 0);
@@ -343,6 +413,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    padding: 0,
+  },
   scrollContent: {
     paddingBottom: 120,
   },
@@ -381,13 +466,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  actionRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    gap: 10,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
     paddingVertical: 14,
     borderRadius: 14,
     gap: 8,
@@ -407,6 +496,31 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  searchButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  noResultsContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    gap: 12,
+  },
+  noResultsText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   categorySection: {
     marginTop: 12,
