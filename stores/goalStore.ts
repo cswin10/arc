@@ -144,7 +144,14 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     try {
       const targetWeek = weekStart || get().selectedWeekStart;
       const goals = await db.getWeeklyGoals(userId, targetWeek);
-      set({ weeklyGoals: goals, isLoading: false });
+      // Sort alphabetically by name, with incomplete goals first
+      const sortedGoals = goals.sort((a, b) => {
+        const aComplete = a.current >= a.target;
+        const bComplete = b.current >= b.target;
+        if (aComplete !== bComplete) return aComplete ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+      set({ weeklyGoals: sortedGoals, isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to fetch weekly goals' });
     }
@@ -210,7 +217,14 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     try {
       const targetMonth = month || get().selectedMonth;
       const goals = await db.getMonthlyGoals(userId, targetMonth);
-      set({ monthlyGoals: goals, isLoading: false });
+      // Sort alphabetically by name, with incomplete goals first
+      const sortedGoals = goals.sort((a, b) => {
+        const aComplete = a.current >= a.target;
+        const bComplete = b.current >= b.target;
+        if (aComplete !== bComplete) return aComplete ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+      set({ monthlyGoals: sortedGoals, isLoading: false });
     } catch (error) {
       set({ isLoading: false, error: 'Failed to fetch monthly goals' });
     }
