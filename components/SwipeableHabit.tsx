@@ -13,9 +13,10 @@ interface SwipeableHabitProps {
   onPress?: (habitId: string) => void;
   onFreeze?: (habitId: string) => void;
   onUnfreeze?: (habitId: string) => void;
-  selectedDate?: string; // If provided, show log status for this date instead of today
-  selectedDateLog?: { completed: boolean } | undefined; // Log for the selected date
-  isSelectedDateFrozen?: boolean; // Whether the selected date is frozen
+  onClearLog?: (habitId: string) => void; // New: clear the log to go back to normal
+  selectedDate?: string;
+  selectedDateLog?: { completed: boolean } | undefined;
+  isSelectedDateFrozen?: boolean;
 }
 
 export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
@@ -25,6 +26,7 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   onPress,
   onFreeze,
   onUnfreeze,
+  onClearLog,
   selectedDate,
   selectedDateLog,
   isSelectedDateFrozen,
@@ -41,6 +43,26 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
   const isFrozen = activeFrozen === true;
   const categoryConfig = getCategoryConfig(habit.category);
 
+  const handleDone = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isCompleted && onClearLog) {
+      // If already done, clear the log to go back to normal
+      onClearLog(habit.id);
+    } else {
+      onSwipeRight(habit.id);
+    }
+  };
+
+  const handleSkip = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isNotCompleted && onClearLog) {
+      // If already skipped, clear the log to go back to normal
+      onClearLog(habit.id);
+    } else {
+      onSwipeLeft(habit.id);
+    }
+  };
+
   const handleFreeze = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isFrozen) {
@@ -48,6 +70,12 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
     } else {
       onFreeze?.(habit.id);
     }
+  };
+
+  const handleStatusPress = () => {
+    if (!onClearLog) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onClearLog(habit.id);
   };
 
   return (
@@ -63,28 +91,34 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
               ? colors.success
               : isNotCompleted
                 ? colors.error
-                : colors.cardBorder,
-            borderWidth: isCompleted || isNotCompleted ? 1.5 : 1,
+                : isFrozen
+                  ? '#64B5F6'
+                  : colors.cardBorder,
+            borderWidth: isCompleted || isNotCompleted || isFrozen ? 1.5 : 1,
           },
         ]}
         onPress={() => onPress?.(habit.id)}
         activeOpacity={0.8}
       >
         <View style={styles.habitContent}>
-          {/* Done button with glow */}
+          {/* Done button - tap to toggle */}
           <TouchableOpacity
             style={[
               styles.actionButton,
               styles.successButton,
               {
-                backgroundColor: colors.success,
-                opacity: isCompleted ? 0.5 : 1,
+                backgroundColor: isCompleted ? colors.success : (isDark ? 'rgba(0, 230, 118, 0.2)' : 'rgba(0, 230, 118, 0.15)'),
+                borderWidth: isCompleted ? 0 : 1.5,
+                borderColor: colors.success,
               },
             ]}
-            onPress={() => onSwipeRight(habit.id)}
-            disabled={isCompleted}
+            onPress={handleDone}
           >
-            <Ionicons name="checkmark" size={18} color="#fff" />
+            <Ionicons
+              name={isCompleted ? 'checkmark' : 'checkmark'}
+              size={18}
+              color={isCompleted ? '#fff' : colors.success}
+            />
           </TouchableOpacity>
 
           <View style={styles.habitInfo}>
@@ -105,23 +139,35 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
               {habit.name}
             </Text>
 
+            {/* Tappable status badges to clear */}
             {isCompleted && (
-              <View style={[styles.statusBadge, { backgroundColor: colors.successLight }]}>
+              <TouchableOpacity
+                style={[styles.statusBadge, { backgroundColor: colors.successLight }]}
+                onPress={handleStatusPress}
+                disabled={!onClearLog}
+              >
                 <Ionicons name="checkmark-circle" size={12} color={colors.success} />
                 <Text style={[styles.statusText, { color: colors.success }]}>Done</Text>
-              </View>
+              </TouchableOpacity>
             )}
             {isNotCompleted && (
-              <View style={[styles.statusBadge, { backgroundColor: colors.errorLight }]}>
+              <TouchableOpacity
+                style={[styles.statusBadge, { backgroundColor: colors.errorLight }]}
+                onPress={handleStatusPress}
+                disabled={!onClearLog}
+              >
                 <Ionicons name="close-circle" size={12} color={colors.error} />
                 <Text style={[styles.statusText, { color: colors.error }]}>Skipped</Text>
-              </View>
+              </TouchableOpacity>
             )}
             {isFrozen && !hasLog && (
-              <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(100, 181, 246, 0.2)' : 'rgba(100, 181, 246, 0.15)' }]}>
+              <TouchableOpacity
+                style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(100, 181, 246, 0.2)' : 'rgba(100, 181, 246, 0.15)' }]}
+                onPress={handleFreeze}
+              >
                 <Ionicons name="snow" size={12} color="#64B5F6" />
                 <Text style={[styles.statusText, { color: '#64B5F6' }]}>Frozen</Text>
-              </View>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -135,7 +181,7 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
               </View>
             )}
 
-            {/* Freeze button */}
+            {/* Freeze button - only show when no log */}
             {(onFreeze || onUnfreeze) && !hasLog && (
               <TouchableOpacity
                 style={[
@@ -154,21 +200,20 @@ export const SwipeableHabit: React.FC<SwipeableHabitProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* Skip button */}
+            {/* Skip button - tap to toggle */}
             <TouchableOpacity
               style={[
                 styles.actionButton,
                 styles.errorButton,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 23, 68, 0.2)' : 'rgba(255, 23, 68, 0.1)',
+                  backgroundColor: isNotCompleted ? colors.error : (isDark ? 'rgba(255, 23, 68, 0.2)' : 'rgba(255, 23, 68, 0.1)'),
                   borderColor: colors.error,
-                  opacity: isNotCompleted ? 0.5 : 1,
+                  borderWidth: isNotCompleted ? 0 : 1.5,
                 },
               ]}
-              onPress={() => onSwipeLeft(habit.id)}
-              disabled={isNotCompleted}
+              onPress={handleSkip}
             >
-              <Ionicons name="close" size={18} color={colors.error} />
+              <Ionicons name="close" size={18} color={isNotCompleted ? '#fff' : colors.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -186,7 +231,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,
-    // Subtle shadow
     ...Platform.select({
       ios: {
         shadowColor: '#E040FB',
@@ -225,7 +269,7 @@ const styles = StyleSheet.create({
     }),
   },
   errorButton: {
-    borderWidth: 1.5,
+    // No extra styles needed
   },
   freezeButton: {
     borderWidth: 1.5,

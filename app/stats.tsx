@@ -1,19 +1,35 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { useTheme } from '../hooks/useTheme';
 import { useHabits } from '../hooks/useHabits';
 import { useYearlyGoals, useMonthlyGoals, useWeeklyGoals } from '../hooks/useGoals';
 import { ProgressBar } from '../components/ProgressBar';
-import { formatWeekRange, getWeekStart, getMonthStart, formatDate } from '../lib/utils';
+import { formatWeekRange, getWeekStart, getMonthStart, formatDate, getToday } from '../lib/utils';
 import { format } from 'date-fns';
 
 export default function StatsScreen() {
   const { colors } = useTheme();
-  const { dailyHabits, weeklyHabits } = useHabits();
-  const { yearlyGoals, selectedYear } = useYearlyGoals();
-  const { monthlyGoals } = useMonthlyGoals();
-  const { weeklyGoals } = useWeeklyGoals();
+  const { dailyHabits, weeklyHabits, refresh: refreshHabits } = useHabits();
+  const { yearlyGoals, selectedYear, refresh: refreshYearly, setSelectedYear } = useYearlyGoals();
+  const { monthlyGoals, refresh: refreshMonthly, setSelectedMonth } = useMonthlyGoals();
+  const { weeklyGoals, refresh: refreshWeekly, setSelectedWeek } = useWeeklyGoals();
+
+  // Fetch data on mount
+  useEffect(() => {
+    const currentYear = getToday().getFullYear();
+    const currentWeek = formatDate(getWeekStart());
+    const currentMonth = formatDate(getMonthStart());
+
+    setSelectedYear(currentYear);
+    setSelectedWeek(currentWeek);
+    setSelectedMonth(currentMonth);
+
+    refreshHabits();
+    refreshYearly(currentYear);
+    refreshWeekly(currentWeek);
+    refreshMonthly(currentMonth);
+  }, []);
 
   // Get current period labels
   const currentWeekRange = formatWeekRange(getWeekStart());

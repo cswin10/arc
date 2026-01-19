@@ -16,7 +16,14 @@ interface GoalCardProps {
   linkedGoalName?: string;
   accentColor?: string;
   allowExceedTarget?: boolean;
+  priority?: 1 | 2 | 3; // 1=high, 2=medium, 3=low
 }
+
+const PRIORITY_COLORS = {
+  1: '#FF5252', // High - Red
+  2: '#FFB74D', // Medium - Orange
+  3: '#4CAF50', // Low - Green
+};
 
 export const GoalCard: React.FC<GoalCardProps> = ({
   name,
@@ -29,6 +36,7 @@ export const GoalCard: React.FC<GoalCardProps> = ({
   linkedGoalName,
   accentColor,
   allowExceedTarget = false,
+  priority,
 }) => {
   const { colors, isDark } = useTheme();
 
@@ -67,6 +75,11 @@ export const GoalCard: React.FC<GoalCardProps> = ({
     >
       <View style={styles.header}>
         <View style={styles.titleContainer}>
+          {priority && priority !== 2 && (
+            <View style={[styles.priorityIndicator, { backgroundColor: PRIORITY_COLORS[priority] + '20' }]}>
+              <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[priority] }]} />
+            </View>
+          )}
           {isComplete && (
             <View style={[styles.completeBadge, { backgroundColor: colors.success + '20' }]}>
               <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -171,6 +184,16 @@ const styles = StyleSheet.create({
   completeBadge: {
     padding: 2,
     borderRadius: 10,
+  },
+  priorityIndicator: {
+    padding: 4,
+    borderRadius: 8,
+    marginRight: 2,
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   name: {
     fontSize: 15,

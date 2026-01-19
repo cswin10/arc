@@ -161,6 +161,7 @@ export default function WeeklyScreen() {
               current={goal.current}
               target={goal.target}
               isRecurring={goal.is_recurring}
+              priority={goal.priority}
               onPress={() => router.push(`/goal/${goal.id}?type=weekly`)}
               onIncrement={isThisWeek ? () => handleOpenGoalAmountModal(goal) : undefined}
             />
