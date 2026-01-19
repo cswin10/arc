@@ -144,11 +144,19 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     try {
       const targetWeek = weekStart || get().selectedWeekStart;
       const goals = await db.getWeeklyGoals(userId, targetWeek);
-      // Sort alphabetically by name, with incomplete goals first
+      // Sort by: incomplete first, then priority (1=high first), then alphabetically
       const sortedGoals = goals.sort((a, b) => {
         const aComplete = a.current >= a.target;
         const bComplete = b.current >= b.target;
         if (aComplete !== bComplete) return aComplete ? 1 : -1;
+        // Priority: 1 (high) comes before 2 (medium) before 3 (low)
+        const aPriority = a.priority ?? 2;
+        const bPriority = b.priority ?? 2;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        // If same priority, use custom order if set
+        const aOrder = a.order ?? 999;
+        const bOrder = b.order ?? 999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
         return a.name.localeCompare(b.name);
       });
       set({ weeklyGoals: sortedGoals, isLoading: false });
@@ -217,11 +225,19 @@ export const useGoalStore = create<GoalState>((set, get) => ({
     try {
       const targetMonth = month || get().selectedMonth;
       const goals = await db.getMonthlyGoals(userId, targetMonth);
-      // Sort alphabetically by name, with incomplete goals first
+      // Sort by: incomplete first, then priority (1=high first), then alphabetically
       const sortedGoals = goals.sort((a, b) => {
         const aComplete = a.current >= a.target;
         const bComplete = b.current >= b.target;
         if (aComplete !== bComplete) return aComplete ? 1 : -1;
+        // Priority: 1 (high) comes before 2 (medium) before 3 (low)
+        const aPriority = a.priority ?? 2;
+        const bPriority = b.priority ?? 2;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        // If same priority, use custom order if set
+        const aOrder = a.order ?? 999;
+        const bOrder = b.order ?? 999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
         return a.name.localeCompare(b.name);
       });
       set({ monthlyGoals: sortedGoals, isLoading: false });

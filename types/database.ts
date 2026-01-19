@@ -70,6 +70,8 @@ export interface DailyTask {
   created_at: string;
 }
 
+export type GoalPriority = 1 | 2 | 3; // 1=high, 2=medium, 3=low
+
 export interface WeeklyGoal {
   id: string;
   user_id: string;
@@ -80,6 +82,8 @@ export interface WeeklyGoal {
   is_recurring: boolean;
   is_archived: boolean;
   linked_yearly_goal_id: string | null;
+  priority?: GoalPriority;
+  order?: number;
   created_at: string;
 }
 
@@ -93,6 +97,8 @@ export interface MonthlyGoal {
   is_recurring: boolean;
   is_archived: boolean;
   linked_yearly_goal_id: string | null;
+  priority?: GoalPriority;
+  order?: number;
   created_at: string;
 }
 

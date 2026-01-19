@@ -18,9 +18,15 @@ import { useTheme } from '../hooks/useTheme';
 import { useYearlyGoals } from '../hooks/useGoals';
 import { formatDate, getWeekStart, getMonthStart, getToday } from '../lib/utils';
 import { YEARLY_GOAL_CATEGORIES, getCategoryConfig } from '../constants/categories';
-import type { YearlyGoalCategory } from '../types/database';
+import type { YearlyGoalCategory, GoalPriority } from '../types/database';
 
 type GoalType = 'weekly' | 'monthly' | 'yearly';
+
+const PRIORITY_OPTIONS = [
+  { value: 1 as GoalPriority, label: 'High', color: '#FF5252', emoji: '🔴' },
+  { value: 2 as GoalPriority, label: 'Medium', color: '#FFB74D', emoji: '🟡' },
+  { value: 3 as GoalPriority, label: 'Low', color: '#4CAF50', emoji: '🟢' },
+];
 
 interface AddGoalModalProps {
   visible: boolean;
@@ -34,6 +40,7 @@ interface AddGoalModalProps {
     month?: string;
     year?: number;
     category?: YearlyGoalCategory;
+    priority?: GoalPriority;
   }) => void;
   type: GoalType;
   period?: string | number;
@@ -56,6 +63,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<YearlyGoalCategory>('other');
+  const [selectedPriority, setSelectedPriority] = useState<GoalPriority>(2);
   const [error, setError] = useState('');
 
   // Group yearly goals by category
@@ -93,11 +101,13 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
       onSubmit({
         ...baseGoal,
         week_start: (period as string) || formatDate(getWeekStart()),
+        priority: selectedPriority,
       });
     } else if (type === 'monthly') {
       onSubmit({
         ...baseGoal,
         month: (period as string) || formatDate(getMonthStart()),
+        priority: selectedPriority,
       });
     } else {
       onSubmit({
@@ -113,6 +123,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     setIsRecurring(false);
     setLinkedGoalId(null);
     setSelectedCategory('other');
+    setSelectedPriority(2);
     setError('');
     onClose();
   };
@@ -224,6 +235,44 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
 
             {type !== 'yearly' && (
               <>
+                {/* Priority Picker */}
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: colors.text }]}>Priority</Text>
+                  <View style={styles.priorityRow}>
+                    {PRIORITY_OPTIONS.map((option) => {
+                      const isSelected = selectedPriority === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.value}
+                          style={[
+                            styles.priorityChip,
+                            {
+                              backgroundColor: isSelected
+                                ? option.color + '20'
+                                : colors.cardBackground,
+                              borderColor: isSelected ? option.color : colors.cardBorder,
+                            },
+                          ]}
+                          onPress={() => {
+                            Haptics.selectionAsync();
+                            setSelectedPriority(option.value);
+                          }}
+                        >
+                          <Text style={styles.priorityEmoji}>{option.emoji}</Text>
+                          <Text
+                            style={[
+                              styles.priorityLabel,
+                              { color: isSelected ? option.color : colors.text },
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
                 <View style={styles.switchRow}>
                   <View>
                     <Text style={[styles.label, { color: colors.text }]}>Recurring</Text>
@@ -407,6 +456,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   categoryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  priorityChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 6,
+  },
+  priorityEmoji: {
+    fontSize: 14,
+  },
+  priorityLabel: {
     fontSize: 13,
     fontWeight: '600',
   },

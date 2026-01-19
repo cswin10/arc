@@ -408,6 +408,7 @@ export default function TodayScreen() {
                 current={goal.current}
                 target={goal.target}
                 isRecurring={goal.is_recurring}
+                priority={goal.priority}
                 onPress={selectedWeekStart === weekStart ? () => handleOpenGoalAmountModal(goal) : () => router.push(`/goal/${goal.id}?type=weekly`)}
                 onIncrement={selectedWeekStart === weekStart ? () => handleQuickIncrementGoal(goal.id) : undefined}
               />
