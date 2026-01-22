@@ -84,6 +84,16 @@ export interface WeeklyGoal {
   linked_yearly_goal_id: string | null;
   priority?: GoalPriority;
   order?: number;
+  track_daily?: boolean;
+  created_at: string;
+}
+
+export interface WeeklyGoalDailyLog {
+  id: string;
+  weekly_goal_id: string;
+  user_id: string;
+  date: string;
+  amount: number;
   created_at: string;
 }
 

@@ -20,6 +20,7 @@ interface AmountInputModalProps {
   currentDayAmount?: number;
   onClose: () => void;
   onSubmit: (amount: number) => void;
+  mode?: 'add' | 'set'; // 'add' adds to existing, 'set' replaces the value
 }
 
 const QUICK_AMOUNTS = [1, 5, 10, 15, 30, 60];
@@ -30,6 +31,7 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
   currentDayAmount = 0,
   onClose,
   onSubmit,
+  mode = 'add',
 }) => {
   const { colors, isDark } = useTheme();
   const [amount, setAmount] = useState('');
@@ -40,7 +42,8 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
 
   useEffect(() => {
     if (visible) {
-      setAmount('');
+      // In 'set' mode, show current amount; in 'add' mode, start empty
+      setAmount(mode === 'set' && currentDayAmount > 0 ? currentDayAmount.toString() : '');
       setError('');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Animated.parallel([
@@ -62,7 +65,7 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
       scaleAnim.setValue(0.9);
       fadeAnim.setValue(0);
     }
-  }, [visible, scaleAnim, fadeAnim]);
+  }, [visible, scaleAnim, fadeAnim, mode, currentDayAmount]);
 
   const handleQuickAmount = async (value: number) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -71,8 +74,15 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    const numAmount = parseInt(amount);
-    if (!amount || isNaN(numAmount) || numAmount < 1) {
+    const numAmount = parseInt(amount) || 0;
+
+    // In 'add' mode, require at least 1; in 'set' mode, allow 0 (clears the entry)
+    if (mode === 'add' && (!amount || isNaN(numAmount) || numAmount < 1)) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    if (mode === 'set' && amount !== '' && isNaN(parseInt(amount))) {
       setError('Please enter a valid amount');
       return;
     }
@@ -109,7 +119,9 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
         >
           <TouchableOpacity activeOpacity={1}>
             <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.text }]}>Log Amount</Text>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {mode === 'set' ? 'Set Amount' : 'Log Amount'}
+              </Text>
               <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -133,8 +145,28 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
               </View>
             )}
 
-            <Text style={[styles.label, { color: colors.text }]}>Quick add</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {mode === 'set' ? 'Quick set' : 'Quick add'}
+            </Text>
             <View style={styles.quickAmounts}>
+              {mode === 'set' && currentDayAmount > 0 && (
+                <TouchableOpacity
+                  style={[
+                    styles.quickButton,
+                    {
+                      backgroundColor: isDark
+                        ? colors.error + '20'
+                        : colors.error + '15',
+                      borderColor: colors.error + '40',
+                    },
+                  ]}
+                  onPress={() => handleQuickAmount(0)}
+                >
+                  <Text style={[styles.quickButtonText, { color: colors.error }]}>
+                    Clear
+                  </Text>
+                </TouchableOpacity>
+              )}
               {QUICK_AMOUNTS.map((value) => (
                 <TouchableOpacity
                   key={value}
@@ -150,13 +182,15 @@ export const AmountInputModal: React.FC<AmountInputModalProps> = ({
                   onPress={() => handleQuickAmount(value)}
                 >
                   <Text style={[styles.quickButtonText, { color: colors.primary }]}>
-                    +{value}
+                    {mode === 'set' ? value : `+${value}`}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={[styles.label, { color: colors.text }]}>Or enter custom amount</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {mode === 'set' ? 'Or set custom amount' : 'Or enter custom amount'}
+            </Text>
             <View style={styles.inputRow}>
               <TextInput
                 ref={inputRef}

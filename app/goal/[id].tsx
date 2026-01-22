@@ -16,18 +16,25 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../hooks/useTheme';
 import { useWeeklyGoals, useMonthlyGoals, useYearlyGoals } from '../../hooks/useGoals';
+import { useAuth } from '../../hooks/useAuth';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Toast } from '../../components/Toast';
+import { AmountInputModal } from '../../components/AmountInputModal';
+import { formatDate, getToday } from '../../lib/utils';
+import * as db from '../../lib/database';
+import type { WeeklyGoalDailyLog } from '../../types/database';
 
 export default function GoalDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: string }>();
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
 
   const {
     weeklyGoals,
     updateWeeklyGoal,
     incrementWeeklyGoal,
     archiveWeeklyGoal,
+    refresh: refreshWeeklyGoals,
   } = useWeeklyGoals();
   const {
     monthlyGoals,
@@ -54,6 +61,14 @@ export default function GoalDetailScreen() {
   } | null>(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
+  // Daily tracking state
+  const [dailyLogs, setDailyLogs] = useState<WeeklyGoalDailyLog[]>([]);
+  const [amountModal, setAmountModal] = useState<{
+    visible: boolean;
+    date: string;
+    currentAmount: number;
+  }>({ visible: false, date: '', currentAmount: 0 });
+
   const hideToast = useCallback(() => {
     setToast((prev) => ({ ...prev, visible: false }));
   }, []);
@@ -79,6 +94,54 @@ export default function GoalDetailScreen() {
       getLinkedItems(id).then(setLinkedItems);
     }
   }, [type, id, getLinkedItems]);
+
+  // Load daily logs for weekly goals with track_daily
+  const loadDailyLogs = useCallback(async () => {
+    if (type === 'weekly' && id) {
+      const weeklyGoal = weeklyGoals.find((g) => g.id === id);
+      if (weeklyGoal?.track_daily) {
+        try {
+          const logs = await db.getWeeklyGoalDailyLogs(id);
+          setDailyLogs(logs);
+        } catch (error) {
+          console.error('Failed to load daily logs:', error);
+        }
+      }
+    }
+  }, [type, id, weeklyGoals]);
+
+  useEffect(() => {
+    loadDailyLogs();
+  }, [loadDailyLogs]);
+
+  const handleDayPress = useCallback((date: string) => {
+    const existingLog = dailyLogs.find((log) => log.date === date);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAmountModal({
+      visible: true,
+      date,
+      currentAmount: existingLog?.amount || 0,
+    });
+  }, [dailyLogs]);
+
+  const handleDailyLogSubmit = useCallback(async (amount: number) => {
+    if (!user || !id) return;
+    try {
+      if (amount === 0) {
+        // Delete the log if amount is 0
+        await db.deleteWeeklyGoalDailyLog(id, amountModal.date);
+      } else {
+        await db.logWeeklyGoalDaily(id, user.id, amountModal.date, amount);
+      }
+      // Recalculate the total
+      await db.recalculateWeeklyGoalFromLogs(id);
+      await loadDailyLogs();
+      await refreshWeeklyGoals();
+      setToast({ visible: true, message: 'Progress updated!', type: 'success' });
+    } catch (error) {
+      setToast({ visible: true, message: 'Failed to update progress', type: 'error' });
+    }
+  }, [user, id, amountModal.date, loadDailyLogs, refreshWeeklyGoals]);
 
   const handleEditPress = () => {
     Haptics.selectionAsync();
@@ -268,14 +331,66 @@ export default function GoalDetailScreen() {
               )}
             </View>
 
-            {/* Increment Button */}
-            <TouchableOpacity
-              style={[styles.incrementButton, { backgroundColor: colors.primary }]}
-              onPress={handleIncrement}
-            >
-              <Ionicons name="add" size={24} color="#fff" />
-              <Text style={styles.incrementButtonText}>Add Progress</Text>
-            </TouchableOpacity>
+            {/* Increment Button - Hide if track_daily is enabled */}
+            {!(type === 'weekly' && 'track_daily' in goal && goal.track_daily) && (
+              <TouchableOpacity
+                style={[styles.incrementButton, { backgroundColor: colors.primary }]}
+                onPress={handleIncrement}
+              >
+                <Ionicons name="add" size={24} color="#fff" />
+                <Text style={styles.incrementButtonText}>Add Progress</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Daily Calendar for Weekly Goals with track_daily */}
+            {type === 'weekly' && 'track_daily' in goal && goal.track_daily && 'week_start' in goal && (
+              <View style={[styles.calendarSection, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Progress</Text>
+                <Text style={[styles.calendarSubtitle, { color: colors.textSecondary }]}>
+                  Tap a day to log progress
+                </Text>
+                <View style={styles.calendarGrid}>
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const date = new Date(goal.week_start);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = formatDate(date);
+                    const log = dailyLogs.find((l) => l.date === dateStr);
+                    const dayAmount = log?.amount || 0;
+                    const isToday = dateStr === formatDate(getToday());
+                    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+                    return (
+                      <TouchableOpacity
+                        key={dateStr}
+                        style={[
+                          styles.calendarDay,
+                          {
+                            backgroundColor: dayAmount > 0
+                              ? colors.success + '20'
+                              : colors.backgroundTertiary,
+                            borderColor: isToday ? colors.primary : 'transparent',
+                            borderWidth: isToday ? 2 : 0,
+                          },
+                        ]}
+                        onPress={() => handleDayPress(dateStr)}
+                      >
+                        <Text style={[styles.dayName, { color: colors.textSecondary }]}>
+                          {dayNames[i]}
+                        </Text>
+                        <Text style={[styles.dayNumber, { color: colors.text }]}>
+                          {date.getDate()}
+                        </Text>
+                        {dayAmount > 0 && (
+                          <Text style={[styles.dayAmount, { color: colors.success }]}>
+                            +{dayAmount}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Info Section */}
             <View style={[styles.infoSection, { backgroundColor: colors.cardBackground, borderColor: colors.cardBorder }]}>
@@ -389,6 +504,15 @@ export default function GoalDetailScreen() {
         message={toast.message}
         type={toast.type}
         onHide={hideToast}
+      />
+
+      <AmountInputModal
+        visible={amountModal.visible}
+        habitName={`Progress for ${amountModal.date}`}
+        currentDayAmount={amountModal.currentAmount}
+        onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
+        onSubmit={handleDailyLogSubmit}
+        mode="set"
       />
     </>
   );
@@ -586,6 +710,43 @@ const styles = StyleSheet.create({
   archiveButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  calendarSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  calendarSubtitle: {
+    fontSize: 12,
+    marginBottom: 12,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  calendarDay: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  dayName: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  dayNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dayAmount: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
   },
   bottomPadding: {
     height: 48,

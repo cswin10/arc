@@ -24,7 +24,7 @@ import type { Habit, HabitLog, StreakFreeze, LifeCategory } from '../../types/da
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
-  const { getHabitWithLogs, updateHabit, archiveHabit, deleteHabit, logHabit, addStreakFreeze, removeStreakFreeze } = useHabits();
+  const { getHabitWithLogs, updateHabit, archiveHabit, deleteHabit, logHabit, deleteHabitLog, addStreakFreeze, removeStreakFreeze } = useHabits();
 
   const [habit, setHabit] = useState<Habit | null>(null);
   const [logs, setLogs] = useState<HabitLog[]>([]);
@@ -116,20 +116,24 @@ export default function HabitDetailScreen() {
     await loadData();
   };
 
-  const toggleLogForDate = async (date: string, currentStatus: boolean | undefined) => {
+  const toggleLogForDate = async (date: string, currentStatus: boolean | undefined, isFrozen: boolean) => {
     if (!habit) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (currentStatus === undefined) {
-      // Not logged -> logged as completed
+    // Cycle: None → Done → Skipped → Frozen → None
+    if (isFrozen) {
+      // Frozen -> None (remove freeze)
+      await removeStreakFreeze(habit.id, date);
+    } else if (currentStatus === undefined) {
+      // None -> Done
       await logHabit(habit.id, date, true);
     } else if (currentStatus === true) {
-      // Completed -> not completed
+      // Done -> Skipped
       await logHabit(habit.id, date, false);
     } else {
-      // Not completed -> delete log (not logged)
-      // For now, toggle back to completed
-      await logHabit(habit.id, date, true);
+      // Skipped -> Frozen (delete log, add freeze)
+      await deleteHabitLog(habit.id, date);
+      await addStreakFreeze(habit.id, date);
     }
     await loadData();
   };
@@ -330,30 +334,30 @@ export default function HabitDetailScreen() {
             <View style={styles.calendarSection}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Last 30 Days</Text>
               <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                Tap to toggle • Long press to freeze
+                Tap to cycle: None → Done → Skipped → Frozen
               </Text>
               <View style={styles.calendarGrid}>
                 {last30Days.map((date) => {
                   const status = getLogStatus(date);
-                  const hasFreezeOnDate = hasFreezeForDate(date);
+                  const isFrozenOnDate = hasFreezeForDate(date);
 
                   let bgColor = colors.backgroundTertiary;
                   if (status === true) bgColor = colors.success;
                   else if (status === false) bgColor = colors.error;
-                  else if (hasFreezeOnDate) bgColor = colors.warning;
+                  else if (isFrozenOnDate) bgColor = colors.warning;
 
                   return (
                     <TouchableOpacity
                       key={date}
                       style={[styles.calendarDay, { backgroundColor: bgColor }]}
-                      onPress={() => toggleLogForDate(date, status)}
+                      onPress={() => toggleLogForDate(date, status, isFrozenOnDate)}
                       onLongPress={() => toggleFreezeForDate(date)}
                       delayLongPress={500}
                     >
                       <Text
                         style={[
                           styles.dayText,
-                          { color: status !== undefined || hasFreezeOnDate ? '#fff' : colors.textTertiary },
+                          { color: status !== undefined || isFrozenOnDate ? '#fff' : colors.textTertiary },
                         ]}
                       >
                         {new Date(date).getDate()}
@@ -363,6 +367,10 @@ export default function HabitDetailScreen() {
                 })}
               </View>
               <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: colors.backgroundTertiary }]} />
+                  <Text style={[styles.legendText, { color: colors.textSecondary }]}>None</Text>
+                </View>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
                   <Text style={[styles.legendText, { color: colors.textSecondary }]}>Done</Text>

@@ -289,11 +289,17 @@ export default function YearlyScreen() {
         ) : (
           categoriesWithGoals.map((category) => {
             const categoryGoals = goalsByCategory[category.id];
+            // Sort goals: incomplete first (alphabetically), then completed at bottom (alphabetically)
+            const sortedCategoryGoals = [...categoryGoals].sort((a, b) => {
+              const aComplete = a.current >= a.target;
+              const bComplete = b.current >= b.target;
+              if (aComplete !== bComplete) return aComplete ? 1 : -1;
+              return a.name.localeCompare(b.name);
+            });
             const isExpanded = expandedCategories.has(category.id);
             const categoryCompleted = categoryGoals.filter((g) => g.current >= g.target).length;
-            const categoryProgress = categoryGoals.reduce((acc, g) => acc + Math.min(g.current, g.target), 0);
-            const categoryTarget = categoryGoals.reduce((acc, g) => acc + g.target, 0);
-            const categoryPercent = categoryTarget > 0 ? Math.round((categoryProgress / categoryTarget) * 100) : 0;
+            // Calculate percentage based on goals completed, not weighted progress
+            const categoryPercent = categoryGoals.length > 0 ? Math.round((categoryCompleted / categoryGoals.length) * 100) : 0;
 
             return (
               <View key={category.id} style={styles.categorySection}>
@@ -338,7 +344,7 @@ export default function YearlyScreen() {
 
                 {isExpanded && (
                   <View style={styles.categoryGoals}>
-                    {categoryGoals.map((goal) => (
+                    {sortedCategoryGoals.map((goal) => (
                       <GoalCard
                         key={goal.id}
                         name={goal.name}
