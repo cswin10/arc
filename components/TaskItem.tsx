@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, TextInput, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../hooks/useTheme';
@@ -11,6 +11,7 @@ interface TaskItemProps {
   onToggle: (taskId: string, completed: boolean) => void;
   onDelete: (taskId: string) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
+  onEdit?: (taskId: string, name: string) => void;
 }
 
 const getPriorityColor = (priority: number, colors: any) => {
@@ -25,11 +26,27 @@ const getPriorityLabel = (priority: number) => {
   return 'Low';
 };
 
-export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange }) => {
+export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange, onEdit }) => {
   const { colors, isDark } = useTheme();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(task.name);
   const priority = task.priority ?? 5;
   const priorityColor = getPriorityColor(priority, colors);
+
+  const handleEditPress = () => {
+    Haptics.selectionAsync();
+    setEditName(task.name);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (onEdit && editName.trim() && editName.trim() !== task.name) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onEdit(task.id, editName.trim());
+    }
+    setShowEditModal(false);
+  };
 
   const handleToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -116,6 +133,18 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
         </TouchableOpacity>
       )}
 
+      {onEdit && !task.completed && (
+        <TouchableOpacity
+          style={[
+            styles.editButton,
+            { backgroundColor: isDark ? 'rgba(224, 64, 251, 0.1)' : 'rgba(224, 64, 251, 0.08)' },
+          ]}
+          onPress={handleEditPress}
+        >
+          <Ionicons name="pencil-outline" size={16} color={colors.primary} />
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity
         style={[
           styles.deleteButton,
@@ -136,6 +165,56 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
+
+      {/* Edit Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEditModal(false)}
+        >
+          <View
+            style={[styles.modalContent, { backgroundColor: colors.cardBackground }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Task</Text>
+            <TextInput
+              style={[
+                styles.editInput,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={editName}
+              onChangeText={setEditName}
+              autoFocus
+              onSubmitEditing={handleSaveEdit}
+              returnKeyType="done"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleSaveEdit}
+              >
+                <Text style={[styles.modalButtonText, { color: '#fff' }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -195,9 +274,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
+  editButton: {
+    padding: 8,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
   deleteButton: {
     padding: 8,
     borderRadius: 10,
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  editInput: {
+    height: 48,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

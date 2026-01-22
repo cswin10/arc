@@ -49,6 +49,7 @@ export default function TodayScreen() {
     deleteDailyTask,
     toggleComplete,
     updatePriority,
+    updateDailyTask,
   } = useDailyTasks();
 
   const {
@@ -70,6 +71,7 @@ export default function TodayScreen() {
     goalName: string;
     current: number;
   }>({ visible: false, goalId: '', goalName: '', current: 0 });
+  const [newTaskPriority, setNewTaskPriority] = useState<number>(5); // Default to Medium
 
   const today = getToday();
   const todayStr = getTodayString();
@@ -191,12 +193,45 @@ export default function TodayScreen() {
     if (!newTaskName.trim()) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await createDailyTask(newTaskName.trim(), selectedDateStr);
+      await createDailyTask(newTaskName.trim(), selectedDateStr, newTaskPriority);
       setNewTaskName('');
+      setNewTaskPriority(5); // Reset to Medium
     } catch (error) {
       Alert.alert('Error', 'Failed to create task');
     }
-  }, [newTaskName, createDailyTask, selectedDateStr]);
+  }, [newTaskName, createDailyTask, selectedDateStr, newTaskPriority]);
+
+  const cyclePriority = useCallback(() => {
+    Haptics.selectionAsync();
+    setNewTaskPriority((prev) => {
+      if (prev < 5) return 5; // Low -> Med
+      if (prev < 8) return 9; // Med -> High
+      return 3; // High -> Low
+    });
+  }, []);
+
+  const getPriorityColor = (priority: number) => {
+    if (priority >= 8) return colors.error; // High - red
+    if (priority >= 5) return colors.warning; // Med - orange
+    return colors.textTertiary; // Low - gray
+  };
+
+  const getPriorityLabel = (priority: number) => {
+    if (priority >= 8) return 'High';
+    if (priority >= 5) return 'Med';
+    return 'Low';
+  };
+
+  const handleEditTask = useCallback(
+    async (taskId: string, name: string) => {
+      try {
+        await updateDailyTask(taskId, { name });
+      } catch (error) {
+        Alert.alert('Error', 'Failed to update task');
+      }
+    },
+    [updateDailyTask]
+  );
 
   const handleAddHabit = useCallback(
     async (habit: Parameters<typeof createHabit>[0] & { category?: string }) => {
@@ -322,6 +357,17 @@ export default function TodayScreen() {
             returnKeyType="done"
           />
           <TouchableOpacity
+            style={[
+              styles.priorityButton,
+              { backgroundColor: getPriorityColor(newTaskPriority) + '20' },
+            ]}
+            onPress={cyclePriority}
+          >
+            <Text style={[styles.priorityButtonText, { color: getPriorityColor(newTaskPriority) }]}>
+              {getPriorityLabel(newTaskPriority)}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.addTaskButton, { backgroundColor: colors.primary }]}
             onPress={handleAddTask}
             disabled={!newTaskName.trim()}
@@ -345,6 +391,7 @@ export default function TodayScreen() {
                 onToggle={toggleComplete}
                 onDelete={deleteDailyTask}
                 onPriorityChange={updatePriority}
+                onEdit={handleEditTask}
               />
             ))}
             {completedTasks.length > 0 && (
@@ -358,6 +405,7 @@ export default function TodayScreen() {
                     task={task}
                     onToggle={toggleComplete}
                     onDelete={deleteDailyTask}
+                    onEdit={handleEditTask}
                   />
                 ))}
               </View>
@@ -513,6 +561,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     fontSize: 16,
     borderWidth: 1,
+  },
+  priorityButton: {
+    paddingHorizontal: 12,
+    height: 50,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priorityButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   addTaskButton: {
     width: 50,

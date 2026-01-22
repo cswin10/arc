@@ -7,6 +7,7 @@ import type {
   StreakFreeze,
   DailyTask,
   WeeklyGoal,
+  WeeklyGoalDailyLog,
   MonthlyGoal,
   YearlyGoal,
 } from '../types/database';
@@ -460,8 +461,85 @@ export const copyRecurringWeeklyGoals = async (
       is_recurring: true,
       is_archived: false,
       linked_yearly_goal_id: goal.linked_yearly_goal_id,
+      track_daily: goal.track_daily,
+      priority: goal.priority,
     });
   }
+};
+
+// ==================== Weekly Goal Daily Logs ====================
+
+export const getWeeklyGoalDailyLogs = async (
+  weeklyGoalId: string
+): Promise<WeeklyGoalDailyLog[]> => {
+  const { data, error } = await supabase
+    .from('weekly_goal_daily_logs')
+    .select('*')
+    .eq('weekly_goal_id', weeklyGoalId)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const logWeeklyGoalDaily = async (
+  weeklyGoalId: string,
+  userId: string,
+  date: string,
+  amount: number
+): Promise<WeeklyGoalDailyLog> => {
+  // Check if log exists for this date
+  const { data: existing } = await supabase
+    .from('weekly_goal_daily_logs')
+    .select('*')
+    .eq('weekly_goal_id', weeklyGoalId)
+    .eq('date', date)
+    .single();
+
+  if (existing) {
+    // Update existing log
+    const { data, error } = await supabase
+      .from('weekly_goal_daily_logs')
+      .update({ amount })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } else {
+    // Create new log
+    const { data, error } = await supabase
+      .from('weekly_goal_daily_logs')
+      .insert({ weekly_goal_id: weeklyGoalId, user_id: userId, date, amount })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+};
+
+export const deleteWeeklyGoalDailyLog = async (
+  weeklyGoalId: string,
+  date: string
+): Promise<void> => {
+  const { error } = await supabase
+    .from('weekly_goal_daily_logs')
+    .delete()
+    .eq('weekly_goal_id', weeklyGoalId)
+    .eq('date', date);
+
+  if (error) throw error;
+};
+
+// Recalculate weekly goal current from daily logs
+export const recalculateWeeklyGoalFromLogs = async (
+  weeklyGoalId: string
+): Promise<WeeklyGoal> => {
+  const logs = await getWeeklyGoalDailyLogs(weeklyGoalId);
+  const total = logs.reduce((sum, log) => sum + log.amount, 0);
+  return updateWeeklyGoal(weeklyGoalId, { current: total });
 };
 
 // ==================== Monthly Goals ====================

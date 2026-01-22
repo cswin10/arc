@@ -35,6 +35,7 @@ interface AddGoalModalProps {
     name: string;
     target: number;
     is_recurring?: boolean;
+    track_daily?: boolean;
     linked_yearly_goal_id?: string | null;
     week_start?: string;
     month?: string;
@@ -60,6 +61,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
   const [name, setName] = useState('');
   const [target, setTarget] = useState('1');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [trackDaily, setTrackDaily] = useState(false);
   const [linkedGoalId, setLinkedGoalId] = useState<string | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<YearlyGoalCategory>('other');
@@ -102,6 +104,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
         ...baseGoal,
         week_start: (period as string) || formatDate(getWeekStart()),
         priority: selectedPriority,
+        track_daily: trackDaily,
       });
     } else if (type === 'monthly') {
       onSubmit({
@@ -121,6 +124,7 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
     setName('');
     setTarget('1');
     setIsRecurring(false);
+    setTrackDaily(false);
     setLinkedGoalId(null);
     setSelectedCategory('other');
     setSelectedPriority(2);
@@ -287,6 +291,23 @@ export const AddGoalModal: React.FC<AddGoalModalProps> = ({
                     thumbColor={isRecurring ? colors.primary : colors.textTertiary}
                   />
                 </View>
+
+                {type === 'weekly' && (
+                  <View style={styles.switchRow}>
+                    <View>
+                      <Text style={[styles.label, { color: colors.text }]}>Track Daily</Text>
+                      <Text style={[styles.sublabel, { color: colors.textSecondary }]}>
+                        Log progress for each day on a calendar
+                      </Text>
+                    </View>
+                    <Switch
+                      value={trackDaily}
+                      onValueChange={setTrackDaily}
+                      trackColor={{ false: colors.border, true: colors.primaryLight }}
+                      thumbColor={trackDaily ? colors.primary : colors.textTertiary}
+                    />
+                  </View>
+                )}
 
                 <View style={styles.inputGroup}>
                   <Text style={[styles.label, { color: colors.text }]}>
