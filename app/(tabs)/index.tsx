@@ -212,7 +212,7 @@ export default function TodayScreen() {
 
   const getPriorityColor = (priority: number) => {
     if (priority >= 8) return colors.error; // High - red
-    if (priority >= 5) return colors.warning; // Med - orange
+    if (priority >= 5) return '#FFB74D'; // Med - yellow/amber
     return colors.textTertiary; // Low - gray
   };
 
@@ -231,6 +231,18 @@ export default function TodayScreen() {
       }
     },
     [updateDailyTask]
+  );
+
+  const handleMoveTaskToDate = useCallback(
+    async (taskId: string, newDate: string) => {
+      try {
+        await updateDailyTask(taskId, { date: newDate });
+        await refreshTasks(selectedDateStr);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to move task');
+      }
+    },
+    [updateDailyTask, refreshTasks, selectedDateStr]
   );
 
   const handleAddHabit = useCallback(
@@ -392,6 +404,7 @@ export default function TodayScreen() {
                 onDelete={deleteDailyTask}
                 onPriorityChange={updatePriority}
                 onEdit={handleEditTask}
+                onMoveToDate={handleMoveTaskToDate}
               />
             ))}
             {completedTasks.length > 0 && (
@@ -406,6 +419,7 @@ export default function TodayScreen() {
                     onToggle={toggleComplete}
                     onDelete={deleteDailyTask}
                     onEdit={handleEditTask}
+                    onMoveToDate={handleMoveTaskToDate}
                   />
                 ))}
               </View>

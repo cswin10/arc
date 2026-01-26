@@ -6,10 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Keyboard,
   Platform,
+  Switch,
 } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +20,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Toast } from '../../components/Toast';
 import { AmountInputModal } from '../../components/AmountInputModal';
+import { ConfirmationModal } from '../../components/ConfirmationModal';
 import { formatDate, getToday } from '../../lib/utils';
+import { YEARLY_GOAL_CATEGORIES } from '../../constants/categories';
 import * as db from '../../lib/database';
-import type { WeeklyGoalDailyLog } from '../../types/database';
+import type { WeeklyGoalDailyLog, GoalPriority, YearlyGoalCategory } from '../../types/database';
 
 export default function GoalDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: string }>();
@@ -54,12 +56,17 @@ export default function GoalDetailScreen() {
   const [editName, setEditName] = useState('');
   const [editTarget, setEditTarget] = useState('');
   const [editCurrent, setEditCurrent] = useState('');
+  const [editPriority, setEditPriority] = useState<GoalPriority>(2);
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [editTrackDaily, setEditTrackDaily] = useState(false);
+  const [editCategory, setEditCategory] = useState<YearlyGoalCategory>('other');
   const [linkedItems, setLinkedItems] = useState<{
     habits: any[];
     weeklyGoals: any[];
     monthlyGoals: any[];
   } | null>(null);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Daily tracking state
   const [dailyLogs, setDailyLogs] = useState<WeeklyGoalDailyLog[]>([]);
@@ -86,6 +93,11 @@ export default function GoalDetailScreen() {
       setEditName(goal.name);
       setEditTarget(goal.target.toString());
       setEditCurrent(goal.current.toString());
+      // Set type-specific fields
+      if ('priority' in goal) setEditPriority(goal.priority ?? 2);
+      if ('is_recurring' in goal) setEditRecurring(goal.is_recurring);
+      if ('track_daily' in goal) setEditTrackDaily(goal.track_daily ?? false);
+      if ('category' in goal) setEditCategory(goal.category ?? 'other');
     }
   }, [goal]);
 
@@ -156,7 +168,7 @@ export default function GoalDetailScreen() {
 
     Keyboard.dismiss();
 
-    const updates = {
+    const baseUpdates = {
       name: editName.trim(),
       target: parseInt(editTarget) || 1,
       current: parseInt(editCurrent) || 0,
@@ -164,11 +176,23 @@ export default function GoalDetailScreen() {
 
     try {
       if (type === 'weekly') {
-        await updateWeeklyGoal(goal.id, updates);
+        await updateWeeklyGoal(goal.id, {
+          ...baseUpdates,
+          priority: editPriority,
+          is_recurring: editRecurring,
+          track_daily: editTrackDaily,
+        });
       } else if (type === 'monthly') {
-        await updateMonthlyGoal(goal.id, updates);
+        await updateMonthlyGoal(goal.id, {
+          ...baseUpdates,
+          priority: editPriority,
+          is_recurring: editRecurring,
+        });
       } else {
-        await updateYearlyGoal(goal.id, updates);
+        await updateYearlyGoal(goal.id, {
+          ...baseUpdates,
+          category: editCategory,
+        });
       }
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -195,26 +219,23 @@ export default function GoalDetailScreen() {
   };
 
   const handleArchive = () => {
-    Alert.alert('Archive Goal', 'This goal will be moved to your archive.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          if (goal) {
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            if (type === 'weekly') {
-              await archiveWeeklyGoal(goal.id);
-            } else if (type === 'monthly') {
-              await archiveMonthlyGoal(goal.id);
-            } else {
-              await archiveYearlyGoal(goal.id);
-            }
-            router.back();
-          }
-        },
-      },
-    ]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowArchiveConfirm(true);
+  };
+
+  const handleConfirmArchive = async () => {
+    setShowArchiveConfirm(false);
+    if (goal) {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      if (type === 'weekly') {
+        await archiveWeeklyGoal(goal.id);
+      } else if (type === 'monthly') {
+        await archiveMonthlyGoal(goal.id);
+      } else {
+        await archiveYearlyGoal(goal.id);
+      }
+      router.back();
+    }
   };
 
   if (!goal) {
@@ -299,6 +320,120 @@ export default function GoalDetailScreen() {
               placeholder="Enter current progress"
               placeholderTextColor={colors.textTertiary}
             />
+
+            {/* Priority for Weekly/Monthly goals */}
+            {(type === 'weekly' || type === 'monthly') && (
+              <>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Priority</Text>
+                <View style={styles.priorityRow}>
+                  {[
+                    { value: 1 as GoalPriority, label: 'High', color: '#FF5252' },
+                    { value: 2 as GoalPriority, label: 'Medium', color: '#FFB74D' },
+                    { value: 3 as GoalPriority, label: 'Low', color: '#4CAF50' },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.priorityChip,
+                        {
+                          backgroundColor: editPriority === option.value
+                            ? option.color + '20'
+                            : colors.cardBackground,
+                          borderColor: editPriority === option.value ? option.color : colors.cardBorder,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        setEditPriority(option.value);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityChipText,
+                          { color: editPriority === option.value ? option.color : colors.text },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Recurring toggle for Weekly/Monthly goals */}
+            {(type === 'weekly' || type === 'monthly') && (
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={[styles.switchLabel, { color: colors.text }]}>Recurring</Text>
+                  <Text style={[styles.switchSublabel, { color: colors.textSecondary }]}>
+                    Auto-add to next {type === 'weekly' ? 'week' : 'month'}
+                  </Text>
+                </View>
+                <Switch
+                  value={editRecurring}
+                  onValueChange={setEditRecurring}
+                  trackColor={{ false: colors.border, true: colors.primaryLight }}
+                  thumbColor={editRecurring ? colors.primary : colors.textTertiary}
+                />
+              </View>
+            )}
+
+            {/* Track Daily toggle for Weekly goals only */}
+            {type === 'weekly' && (
+              <View style={styles.switchRow}>
+                <View>
+                  <Text style={[styles.switchLabel, { color: colors.text }]}>Track Daily</Text>
+                  <Text style={[styles.switchSublabel, { color: colors.textSecondary }]}>
+                    Log progress for each day on a calendar
+                  </Text>
+                </View>
+                <Switch
+                  value={editTrackDaily}
+                  onValueChange={setEditTrackDaily}
+                  trackColor={{ false: colors.border, true: colors.primaryLight }}
+                  thumbColor={editTrackDaily ? colors.primary : colors.textTertiary}
+                />
+              </View>
+            )}
+
+            {/* Category picker for Yearly goals */}
+            {type === 'yearly' && (
+              <>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+                  {YEARLY_GOAL_CATEGORIES.map((category) => {
+                    const isSelected = editCategory === category.id;
+                    return (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: isSelected ? category.color + '20' : colors.cardBackground,
+                            borderColor: isSelected ? category.color : colors.cardBorder,
+                          },
+                        ]}
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setEditCategory(category.id);
+                        }}
+                      >
+                        <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+                        <Text
+                          style={[
+                            styles.categoryLabel,
+                            { color: isSelected ? category.color : colors.text },
+                          ]}
+                        >
+                          {category.label.split(' ')[0]}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.saveButton, { backgroundColor: colors.primary }]}
@@ -513,6 +648,17 @@ export default function GoalDetailScreen() {
         onClose={() => setAmountModal((prev) => ({ ...prev, visible: false }))}
         onSubmit={handleDailyLogSubmit}
         mode="set"
+      />
+
+      <ConfirmationModal
+        visible={showArchiveConfirm}
+        title="Archive Goal"
+        message={`Are you sure you want to archive "${goal?.name}"? You can restore it later from the archives.`}
+        confirmText="Archive"
+        cancelText="Cancel"
+        icon="archive-outline"
+        onConfirm={handleConfirmArchive}
+        onCancel={() => setShowArchiveConfirm(false)}
       />
     </>
   );
@@ -750,5 +896,57 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 48,
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  priorityChip: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
+  priorityChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  switchSublabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  categoryScroll: {
+    marginVertical: 4,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    marginRight: 10,
+    gap: 6,
+  },
+  categoryEmoji: {
+    fontSize: 16,
+  },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
