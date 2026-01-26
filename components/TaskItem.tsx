@@ -12,11 +12,12 @@ interface TaskItemProps {
   onDelete: (taskId: string) => void;
   onPriorityChange?: (taskId: string, priority: number) => void;
   onEdit?: (taskId: string, name: string) => void;
+  onMoveToDate?: (taskId: string, newDate: string) => void;
 }
 
 const getPriorityColor = (priority: number, colors: any) => {
   if (priority >= 8) return colors.error; // High priority - red
-  if (priority >= 5) return colors.warning; // Medium priority - orange
+  if (priority >= 5) return '#FFB74D'; // Medium priority - yellow/amber
   return colors.textTertiary; // Low priority - gray
 };
 
@@ -26,13 +27,33 @@ const getPriorityLabel = (priority: number) => {
   return 'Low';
 };
 
-export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange, onEdit }) => {
+export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onPriorityChange, onEdit, onMoveToDate }) => {
   const { colors, isDark } = useTheme();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState(task.name);
   const priority = task.priority ?? 5;
   const priorityColor = getPriorityColor(priority, colors);
+
+  const handleMoveToTomorrow = () => {
+    if (!onMoveToDate) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const tomorrow = new Date(task.date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    onMoveToDate(task.id, tomorrowStr);
+    setShowEditModal(false);
+  };
+
+  const handleMoveToYesterday = () => {
+    if (!onMoveToDate) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const yesterday = new Date(task.date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    onMoveToDate(task.id, yesterdayStr);
+    setShowEditModal(false);
+  };
 
   const handleEditPress = () => {
     Haptics.selectionAsync();
@@ -198,6 +219,30 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, on
               onSubmitEditing={handleSaveEdit}
               returnKeyType="done"
             />
+
+            {/* Move to different day */}
+            {onMoveToDate && (
+              <View style={styles.moveDateSection}>
+                <Text style={[styles.moveDateLabel, { color: colors.textSecondary }]}>Move to</Text>
+                <View style={styles.moveDateButtons}>
+                  <TouchableOpacity
+                    style={[styles.moveDateButton, { backgroundColor: colors.backgroundSecondary }]}
+                    onPress={handleMoveToYesterday}
+                  >
+                    <Ionicons name="arrow-back" size={16} color={colors.text} />
+                    <Text style={[styles.moveDateButtonText, { color: colors.text }]}>Yesterday</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.moveDateButton, { backgroundColor: colors.primary + '20' }]}
+                    onPress={handleMoveToTomorrow}
+                  >
+                    <Text style={[styles.moveDateButtonText, { color: colors.primary }]}>Tomorrow</Text>
+                    <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: colors.backgroundSecondary }]}
@@ -324,6 +369,33 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  moveDateSection: {
+    marginBottom: 16,
+  },
+  moveDateLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  moveDateButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  moveDateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  moveDateButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });
